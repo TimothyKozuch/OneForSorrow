@@ -38,6 +38,8 @@ class Game:
         self.assets = {
             'decor': load_images('tiles/decor'),
             'grass': load_images('tiles/grass'),
+            'wood': load_images('tiles/wood'),
+
             'large_decor': load_images('tiles/large_decor'),
             'stone': load_images('tiles/stone'),
             'player': load_image('entities/player.png'),
@@ -133,6 +135,7 @@ class Game:
         json.dump(self.player_state,f, indent=4)
         f.close()
 
+        print("saved flags")
         transitioning = True
         while transitioning:
             self.transition += 1
@@ -272,7 +275,9 @@ class Game:
                                 self.current_dialogue = friend.talk(choice_number)
 
 
-
+                    if event.key in (pygame.K_ESCAPE):
+                        pygame.quit()
+                        sys.exit()
                     if event.key in (pygame.K_LEFT, pygame.K_a):
                         self.movement[0] = True
                     if event.key in (pygame.K_RIGHT, pygame.K_d):
