@@ -275,7 +275,7 @@ class Game:
                                 self.current_dialogue = friend.talk(choice_number)
 
 
-                    if event.key in (pygame.K_ESCAPE):
+                    if event.key == pygame.K_ESCAPE:
                         pygame.quit()
                         sys.exit()
                     if event.key in (pygame.K_LEFT, pygame.K_a):
