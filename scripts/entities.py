@@ -18,7 +18,10 @@ class PhysicsEntity:
         self.action = ''
         self.anim_offset = (-3, -3)
         self.flip = False
-        self.set_action('idle')
+        if self.type == 'player':
+            self.set_action('lyla_idle')
+        else:
+            self.set_action('idle')
         
         self.last_movement = [0, 0]
     
@@ -228,6 +231,7 @@ class Enemy(PhysicsEntity):
 class Player(PhysicsEntity):
     def __init__(self, game, pos, size, screen_size):
         super().__init__(game, 'player', pos, size)
+        self.set_action('lyla_idle')
         self.air_time = 0
         self.max_jumps = 2
         self.wall_slide = False
@@ -262,7 +266,7 @@ class Player(PhysicsEntity):
                 self.flip = False
             else:
                 self.flip = True
-            self.set_action('wall_slide')
+            self.set_action('lyla_wall_slide')
 
 
         if self.gliding:
@@ -305,13 +309,13 @@ class Player(PhysicsEntity):
 
         if not self.wall_slide:
             if self.gliding:
-                 self.set_action('gliding')
+                 self.set_action('lyla_flying')
             elif self.air_time > 4:
-                self.set_action('jump')
+                self.set_action('lyla_jump')
             elif movement[0] != 0:
-                self.set_action('run')
+                self.set_action('lyla_run')
             else:
-                self.set_action('idle')
+                self.set_action('lyla_idle')
         
         if abs(self.dashing) in {60, 50}:
             for i in range(20):
@@ -337,7 +341,7 @@ class Player(PhysicsEntity):
             self.velocity[0] = min(self.velocity[0] + 0.1, 0)
     
     def render(self, surf, offset=(0, 0)):
-        if self.action == 'gliding' or self.action == 'run' or self.action == 'jump' or self.action == 'idle' or self.action == 'wall_slide':
+        if self.action == 'lyla_flying' or self.action == 'lyla_run' or self.action == 'lyla_jump' or self.action == 'lyla_idle' or self.action == 'lyla_wall_slide':
             surf.blit(pygame.transform.flip(self.animation.img(), not self.flip, False), (self.pos[0] - offset[0] + self.anim_offset[0], self.pos[1] - offset[1] + self.anim_offset[1]))
         elif abs(self.dashing) <= 50:
             super().render(surf, offset=offset)

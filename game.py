@@ -50,12 +50,12 @@ class Game:
 
             'friend/idle': Animation(load_images('entities/friend/idle'), img_dur=6),
 
-            'player/idle': Animation(load_images('entities/player/idle'), img_dur=6),
-            'player/run': Animation(load_images('entities/player/run'), img_dur=4),
-            'player/jump': Animation(load_images('entities/player/jump'),img_dur=1,loop=False),
+            'player/lyla_idle': Animation(load_images('entities/player/lyla_idle'), img_dur=6),
+            'player/lyla_run': Animation(load_images('entities/player/lyla_run'), img_dur=4),
+            'player/lyla_jump': Animation(load_images('entities/player/lyla_jump'),img_dur=1,loop=False),
             'player/slide': Animation(load_images('entities/player/slide_old')),
-            'player/wall_slide': Animation(load_images('entities/player/wall_slide')),
-            'player/gliding': Animation(load_images('entities/player/gliding')),
+            'player/lyla_wall_slide': Animation(load_images('entities/player/lyla_wall_slide')),
+            'player/lyla_flying': Animation(load_images('entities/player/lyla_flying')),
 
             'particle/leaf': Animation(load_images('particles/leaf'), img_dur=20, loop=False),
             'particle/particle': Animation(load_images('particles/particle'), img_dur=6, loop=False),
