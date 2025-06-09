@@ -237,9 +237,10 @@ class Player(PhysicsEntity):
         self.wall_slide = False
         self.dashing = 0
         self.jumps = self.max_jumps
-        self.gliding=False
+
         self.screen_size = screen_size
         self.interacting = False
+        self.casting = False
     
     def update(self, tilemap, movement=(0, 0)):
         super().update(tilemap, movement=movement)
@@ -255,12 +256,10 @@ class Player(PhysicsEntity):
         if self.collisions['down']:
             self.air_time = 0
             self.jumps = self.max_jumps
-            self.gliding=False
             
         self.wall_slide = False
         if (self.collisions['right'] or self.collisions['left']) and self.air_time > 4:
             self.wall_slide = True
-            self.gliding=False
             self.velocity[1] = min(self.velocity[1], 0.5)
             if self.collisions['right']:
                 self.flip = False
@@ -268,49 +267,8 @@ class Player(PhysicsEntity):
                 self.flip = True
             self.set_action('lyla_wall_slide')
 
-
-        if self.gliding:
-            mouse_x, mouse_y = pygame.mouse.get_pos()[0] *(320/self.screen_size[0]) , pygame.mouse.get_pos()[1] *(240/self.screen_size[1])
-            # Calculate angle from glider to mouse (this is also the glider's rotation)
-            #pixelpos = self.pos[0]-offset,self.pos[1]-offset
-            angle = math.atan2(mouse_y - self.pos[1], mouse_x - self.pos[0])
-            # Calculate the gliding speed based on the angle
-            # When angle is closer to horizontal (0 or π), more horizontal speed
-            # When angle is more vertical, more vertical (falling) speed
-            
-            # Get the absolute horizontal component (how horizontal the glider is)
-            horizontal_factor = abs(math.cos(angle))
-            
-            # Get the vertical component (how downward the glider is)
-            vertical_factor = math.sin(angle)
-            
-            # Set base gliding speed
-            glide_speed = 5.0
-            
-            # More horizontal means faster overall and less falling
-            self.velocity[0] = math.cos(angle) * glide_speed #* (0.8 + horizontal_factor * 0.4)
-            
-            # More vertical means faster falling
-            # Limit minimum fall speed to ensure the glider always descends
-            fall_speed = glide_speed * (0.2 + (1 - horizontal_factor) * 0.6)
-            # Make sure fall direction is always downward
-            if vertical_factor < 0:
-                fall_speed *= 0.5  # Less upward movement when pointed up
-            
-            self.velocity[1] = vertical_factor * fall_speed
-            
-            # Add minimum falling speed to ensure gravity effect
-            if self.velocity[1] < 0.5:
-                self.velocity[1] += 0.5
-            
-            
-
-
-
         if not self.wall_slide:
-            if self.gliding:
-                 self.set_action('lyla_flying')
-            elif self.air_time > 4:
+            if self.air_time > 4:
                 self.set_action('lyla_jump')
             elif movement[0] != 0:
                 self.set_action('lyla_run')
@@ -323,6 +281,7 @@ class Player(PhysicsEntity):
                 speed = random.random() * 0.5 + 0.5
                 pvelocity = [math.cos(angle) * speed, math.sin(angle) * speed]
                 self.game.particles.append(Particle(self.game, 'particle', self.rect().center, velocity=pvelocity, frame=random.randint(0, 7)))
+
 
         if self.dashing > 0:
             self.dashing = max(0, self.dashing - 1)
@@ -341,31 +300,41 @@ class Player(PhysicsEntity):
             self.velocity[0] = min(self.velocity[0] + 0.1, 0)
     
     def render(self, surf, offset=(0, 0)):
-        if self.action == 'lyla_flying' or self.action == 'lyla_run' or self.action == 'lyla_jump' or self.action == 'lyla_idle' or self.action == 'lyla_wall_slide':
+        if self.action == 'lyla_run' or self.action == 'lyla_jump' or self.action == 'lyla_idle' or self.action == 'lyla_wall_slide':
             surf.blit(pygame.transform.flip(self.animation.img(), not self.flip, False), (self.pos[0] - offset[0] + self.anim_offset[0], self.pos[1] - offset[1] + self.anim_offset[1]))
         elif abs(self.dashing) <= 50:
             super().render(surf, offset=offset)
+
+            
+        if self.casting:
+            music_anim = self.game.assets['particle/music']
+            music_img = music_anim.img()  # Get current frame as a surface
+            surf.blit(music_img, (self.pos[0] - offset[0] + self.anim_offset[0], self.pos[1] - offset[1] + self.anim_offset[1]))
+
+            
+
         
 
     def jump(self):
         if self.wall_slide:
+
             if self.flip and self.last_movement[0] < 0:
                 self.velocity[0] = 3.5
-                self.velocity[1] = -2.5
-                self.air_time = 0
-                #self.jumps = max(0, self.jumps - 1)
-                return True
             elif not self.flip and self.last_movement[0] > 0:
                 self.velocity[0] = -3.5
-                self.velocity[1] = -2.5
-                self.air_time = 0
-                #self.jumps = max(0, self.jumps - 1)
-                return True
+
+            self.air_time = 0
+            #self.jumps = max(0, self.jumps - 1)
+            self.velocity[1] = -2.5
+            self.game.sfx['jump'].play()
+
+            return True
                 
         elif self.jumps:
             self.velocity[1] = -3
             self.jumps -= 1
             self.air_time = 0
+            self.game.sfx['jump'].play()
             return True
     
     def dash(self):
@@ -376,10 +345,8 @@ class Player(PhysicsEntity):
             else:
                 self.dashing = 60
 
-    def start_glide(self):
-        self.gliding=True
-        return
-        
-    def end_glide(self):
-        self.gliding=False
-        return
+    def startCasting(self):
+        self.casting = True
+
+    def stopCasting(self):
+        self.casting =False

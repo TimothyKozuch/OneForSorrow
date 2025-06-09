@@ -28,7 +28,7 @@ class Game:
 
         self.font = pygame.font.Font(None, 36)
         self.current_dialogue = ''
-        
+        self.combatMode = True
 
 
         self.clock = pygame.time.Clock()
@@ -57,8 +57,11 @@ class Game:
             'player/lyla_wall_slide': Animation(load_images('entities/player/lyla_wall_slide')),
             'player/lyla_flying': Animation(load_images('entities/player/lyla_flying')),
 
+            'player/melody_idle': Animation(load_images('entities/player/melody_idle'), img_dur=6),
+
             'particle/leaf': Animation(load_images('particles/leaf'), img_dur=20, loop=False),
             'particle/particle': Animation(load_images('particles/particle'), img_dur=6, loop=False),
+            'particle/music': Animation(load_images('particles/music'), img_dur=6, loop=False),
             'gun': load_image('gun.png'),
             'projectile': load_image('projectile.png'),
         }
@@ -89,6 +92,12 @@ class Game:
         self.screenshake = 0
         
     def load_level(self, map_id):
+        pygame.mixer.music.load('data/music.wav')
+        pygame.mixer.music.set_volume(0.5)
+        pygame.mixer.music.play(-1)
+        self.sfx['ambience'].play(-1)
+        pygame.mixer.pause()
+
         self.tilemap.load('data/maps/' + str(map_id) + '.json')
         
         self.leaf_spawners = []
@@ -152,13 +161,12 @@ class Game:
 
 
     def run(self):
-        pygame.mixer.music.load('data/music.wav')
-        pygame.mixer.music.set_volume(0.5)
-        pygame.mixer.music.play(-1)
+        running = True
+        pygame.mixer.unpause()
         
-        self.sfx['ambience'].play(-1)
+        
 
-        while True:
+        while running:
             self.display.fill((0, 0, 0, 0))
             self.display_2.blit(self.assets['background'], (0, 0))
             
@@ -211,11 +219,11 @@ class Game:
 
             
 
-                if self.player.gliding:
-                    #RENDER_SCALE = 6
-                    mpos = pygame.mouse.get_pos()
-                    mpos = (mpos[0] *(320/self.info.current_w), mpos[1] *(240/self.info.current_h))
-                    pygame.draw.line(self.display, (0, 255, 0), (self.player.pos[0]-self.scroll[0], self.player.pos[1]-self.scroll[1]), (mpos[0],mpos[1]), 2)
+
+                # #RENDER_SCALE = 6
+                # mpos = pygame.mouse.get_pos()
+                # mpos = (mpos[0] *(320/self.info.current_w), mpos[1] *(240/self.info.current_h))
+                # pygame.draw.line(self.display, (0, 255, 0), (self.player.pos[0]-self.scroll[0], self.player.pos[1]-self.scroll[1]), (mpos[0],mpos[1]), 2)
             
 
 
@@ -263,31 +271,32 @@ class Game:
                     self.particles.remove(particle)
             
             for event in pygame.event.get():
+            #press x to quit
                 if event.type == pygame.QUIT:
                     pygame.quit()
                     sys.exit()
 
                 if event.type == pygame.KEYDOWN:
+                    #dialogue
                     if pygame.K_1 <= event.key <= pygame.K_9:
                         choice_number = event.key-pygame.K_0
                         for friend in self.friends.copy():
                             if self.player.rect().colliderect(friend.rect()):
                                 self.current_dialogue = friend.talk(choice_number)
-
-
+                    #pause
                     if event.key == pygame.K_ESCAPE:
-                        pygame.quit()
-                        sys.exit()
+                       running = False 
                     if event.key in (pygame.K_LEFT, pygame.K_a):
                         self.movement[0] = True
                     if event.key in (pygame.K_RIGHT, pygame.K_d):
                         self.movement[1] = True
-                    if event.key in (pygame.K_UP, pygame.K_SPACE):
-                        if self.player.jump():
 
-                            self.sfx['jump'].play()
-                    if event.key == pygame.K_x:
-                        self.player.dash()
+                    #custom keybinds for KEYDOWN
+                    for action, key_string in self.player_state["controls"]["KEYDOWN"].items():
+                        key_code = getattr(pygame, key_string, None)
+                        if key_code is not None and event.key == key_code:
+                            getattr(self.player, action)()
+                    
 
                 elif event.type == pygame.KEYUP:
                     if event.key in (pygame.K_LEFT, pygame.K_a):
@@ -295,14 +304,17 @@ class Game:
                     if event.key in (pygame.K_RIGHT, pygame.K_d):
                         self.movement[1] = False
 
+                    #custom keybinds for KEYUP
+                    for action, key_string in self.player_state["controls"]["KEYUP"].items():
+                        key_code = getattr(pygame, key_string, None)
+                        if key_code is not None and event.key == key_code:
+                            getattr(self.player, action)()
+
+                #mouse support
                 elif event.type == pygame.MOUSEBUTTONDOWN:
                     if event.button == 3:  # Right-click
                         self.player.dash()
-                    if event.button == 1:
-                        self.player.start_glide()
-                elif event.type == pygame.MOUSEBUTTONUP:
-                    if event.button == 1:
-                        self.player.end_glide()
+                    
 
 
             if self.transition:
@@ -321,5 +333,25 @@ class Game:
 
             pygame.display.update()
             self.clock.tick(60)
+
+        self.pause()
+
+    def pause(self):
+        pygame.mixer.pause()
+        paused = True
+        while paused:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                        pygame.quit()
+                        sys.exit()
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_m:
+                        self.combatMode= not self.combatMode
+                    if event.key == pygame.K_ESCAPE:
+                       paused = False
+                
+        self.run()
+
+
 
 Game().run()

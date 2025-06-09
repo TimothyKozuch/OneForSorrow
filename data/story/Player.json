@@ -1,7 +1,12 @@
 {
+    "controls":{
+        "KEYDOWN":{"dash":"K_x","startCasting":"K_LSHIFT","jump":"K_SPACE"},
+        "KEYUP":{"stopCasting":"K_LSHIFT"}
+    },
+    
     "playerLevel": 0,
     "inventory": {},
-    "equipped": [],
+    "equipped": {},
     "Melody_Song_flags": {},
     "Lyla_Silence_flags": {}
 }
