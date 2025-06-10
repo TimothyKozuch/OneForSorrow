@@ -125,9 +125,9 @@ class Friend(PhysicsEntity):
 
         if self.dialogue_ID == 'None':
             self.dialogue_ID = 'start'
-        elif (num <= len(self.current_dialogue['choices']) and (num>=1)):
+        elif (isinstance(self.current_dialogue.get('choices'), list) and 0 <= num < len(self.current_dialogue['choices'])):
             # Get the chosen option
-            chosen_choice = self.current_dialogue['choices'][num - 1]
+            chosen_choice = self.current_dialogue['choices'][num]
             
             # Apply any flag changes from this choice
             self.apply_flag_changes(chosen_choice)
@@ -240,6 +240,7 @@ class Player(PhysicsEntity):
 
         self.screen_size = screen_size
         self.interacting = False
+        self.selecting = 0
         self.casting = False
     
     def update(self, tilemap, movement=(0, 0)):
@@ -312,7 +313,7 @@ class Player(PhysicsEntity):
             surf.blit(music_img, (self.pos[0] - offset[0] + self.anim_offset[0], self.pos[1] - offset[1] + self.anim_offset[1]))
 
             
-    def jump(self,value,threshold = 0.2):
+    def jump(self,value,sensitivity = 0.2):
         if value <=1:
             if self.wall_slide:
 
@@ -336,7 +337,7 @@ class Player(PhysicsEntity):
                 return True
         return False
     
-    def dash(self,value,threshold = 0.2):
+    def dash(self,value,sensitivity = 0.2):
         if value<=1:
             if not self.dashing:
                 self.game.sfx['dash'].play()
@@ -345,37 +346,56 @@ class Player(PhysicsEntity):
                 else:
                     self.dashing = 60
 
-    def startCasting(self,value,threshold = 0.2):
+    def startCasting(self,value,sensitivity = 0.2):
         if value<=1:
-            self.casting = value > threshold
+            self.casting = value > sensitivity
         else:
             self.casting=False
         
-    def stopCasting(self,value,threshold = 0.2):
+    def stopCasting(self,value,sensitivity = 0.2):
         self.casting =False
-    def moveHorizontal(self,value,threshold = 0.2):
+    def moveHorizontal(self,value,sensitivity = 0.2):
         if (-1<=value<=1):
-            self.game.movement[0] = value < -threshold
-            self.game.movement[1] = value > threshold
+            self.game.movement[0] = value < -sensitivity
+            self.game.movement[1] = value > sensitivity
         elif value ==-2:
             self.game.movement[0]=False
         elif value==2:
             self.game.movement[1]=False
 
 
-    def moveVirtical(self,value,threshold = 0.2):
-        if (-1<=value<=1):
-            if value>threshold:
-                self.jump(value)
-            if value<-threshold:
+    def moveVirtical(self,value,sensitivity = 0.2):#up=down down=up
+        if (-2<value<2):
+            if value>sensitivity:
                 print("crouch")
+            else:
+                print("uncrouch")
+            if value<-sensitivity:
+                self.jump(value)
         else:
             print("uncrouch")
-    def numbers(self,value,threshold = 0.2):
-        if value !=0:
-            for friend in self.game.friends.copy():
+
+    def scroll(self, value, sensitivity=0.2):
+        for friend in self.game.friends.copy():
+            if self.rect().colliderect(friend.rect()):
+                if "choices" in friend.current_dialogue and len(friend.current_dialogue["choices"]) > 0:
+                    if (-1<=value<=1):
+                        self.selecting = (self.selecting + value) % len(friend.current_dialogue["choices"])
+                        print(self.selecting)
+    
+    def interact(self, value, sensitivity=0.2):
+        if value<0:
+            pass
+        elif value==0:
+            value= self.selecting
+        else:
+            value= value-1 #using number keys
+        for friend in self.game.friends.copy():
                 if self.rect().colliderect(friend.rect()):
                     self.game.current_dialogue = friend.talk(value)
-    def pause(self,value,threshold = 0.2):
+                    self.selecting=0
+                    continue
+
+    def pause(self,value,sensitivity = 0.2):
         if value<=1:
             self.game.running = not self.game.running

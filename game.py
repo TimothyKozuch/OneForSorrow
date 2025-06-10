@@ -272,42 +272,49 @@ class Game:
                 if event.type == pygame.QUIT:
                     pygame.quit()
                     sys.exit()
-
-                if event.type==pygame.KEYUP or event.type==pygame.KEYDOWN:
-                    key_name = pygame.key.name(event.key) 
+                #keyboard and mouse
+                elif event.type==pygame.KEYUP or event.type==pygame.KEYDOWN or event.type == pygame.MOUSEBUTTONDOWN:
+                    if event.type==pygame.KEYUP or event.type==pygame.KEYDOWN:
+                        key_name = pygame.key.name(event.key) 
+                    elif event.type == pygame.MOUSEBUTTONDOWN:
+                        key_name = "mouse_"+str(event.button)
                     keyBind = self.player_state["controls"]["KEYBOARD"]
                     if key_name in keyBind:
                         value = keyBind[key_name]["value"]
-                        if event.type == pygame.KEYUP:
-                            if key_name.isdigit():
-                                value =0
+                        if event.type == pygame.KEYUP or event.type == pygame.MOUSEBUTTONUP:
+                            if keyBind[key_name]["action"]=="interact":
+                                value =-1
                             else:
                                 value = value*2
                         getattr(self.player, keyBind[key_name]["action"])(value)
                 
                 #controller support
-                elif event.type == pygame.JOYBUTTONDOWN:
-                    buttonDown = self.player_state["controls"]["CONTROLLER"]["BUTTONDOWN"]
-                    if str(event.button) in buttonDown:
-                        getattr(self.player, buttonDown[str(event.button)]["action"])(event.value,buttonDown[str(event.button)]["threshold"])
+                elif event.type == pygame.JOYBUTTONDOWN or event.type == pygame.JOYBUTTONUP or event.type == pygame.JOYHATMOTION:
+                    keyBind = self.player_state["controls"]["CONTROLLER"]["BUTTONDOWN"]
+                    if event.type == pygame.JOYBUTTONDOWN or event.type == pygame.JOYBUTTONUP:
+                        button_name = str(event.button)
+                    elif event.type == pygame.JOYHATMOTION:
+                        button_name = str(event.value)
+                    if button_name in keyBind:
+                        value = keyBind[button_name]["value"]
+                        if event.type == pygame.JOYBUTTONUP:
+                            if keyBind[button_name]["action"]=="interact":
+                                value =-1
+                            else:
+                                value = value*2
+                        getattr(self.player, keyBind[button_name]["action"])(value)
 
                 elif event.type == pygame.JOYAXISMOTION:
                     axismotion = self.player_state["controls"]["CONTROLLER"]["AXISMOTION"]
                     if str(event.axis) in axismotion:
-                        getattr(self.player, axismotion[str(event.axis)]["action"])(event.value,axismotion[str(event.axis)]["threshold"])
+                        getattr(self.player, axismotion[str(event.axis)]["action"])(event.value,axismotion[str(event.axis)]["sensitivity"])
 
 
                     # if event.axis == 5 and event.value > 0.5:
                     #     print("Right trigger pressed!")
                     
                     
-                elif event.type == pygame.JOYHATMOTION:
-                    print(event)
-                #mouse support
-                elif event.type == pygame.MOUSEBUTTONDOWN:
-                    if event.button == 3:  # Right-click
-                        self.player.dash(1)
-                    
+                
 
 
             if self.transition:
