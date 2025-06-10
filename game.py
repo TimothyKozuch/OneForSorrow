@@ -18,8 +18,6 @@ class Game:
     def __init__(self):
         pygame.init()
 
-        
-
         pygame.display.set_caption('Disasterpiece (one for sorrow)')
         self.info = pygame.display.Info()
         self.screen = pygame.display.set_mode((self.info.current_w, self.info.current_h), pygame.RESIZABLE)
@@ -61,7 +59,7 @@ class Game:
 
             'particle/leaf': Animation(load_images('particles/leaf'), img_dur=20, loop=False),
             'particle/particle': Animation(load_images('particles/particle'), img_dur=6, loop=False),
-            'particle/music': Animation(load_images('particles/music'), img_dur=6, loop=False),
+            'particle/music': Animation(load_images('particles/music'), img_dur=20),
             'gun': load_image('gun.png'),
             'projectile': load_image('projectile.png'),
         }
@@ -166,8 +164,6 @@ class Game:
         self.running = True
         pygame.mixer.unpause()
         
-        
-
         while self.running:
             self.display.fill((0, 0, 0, 0))
             self.display_2.blit(self.assets['background'], (0, 0))
@@ -254,10 +250,10 @@ class Game:
                 if kill:
                     self.sparks.remove(spark)
                     
-            display_mask = pygame.mask.from_surface(self.display)
-            display_sillhouette = display_mask.to_surface(setcolor=(0, 0, 0, 180), unsetcolor=(0, 0, 0, 0))
-            for offset in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
-                self.display_2.blit(display_sillhouette, offset)
+            # display_mask = pygame.mask.from_surface(self.display)
+            # display_sillhouette = display_mask.to_surface(setcolor=(0, 0, 0, 180), unsetcolor=(0, 0, 0, 0))
+            # for offset in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+            #     self.display_2.blit(display_sillhouette, offset)
             
             for particle in self.particles.copy():
                 kill = particle.update()
@@ -314,9 +310,6 @@ class Game:
                     #     print("Right trigger pressed!")
                     
                     
-                
-
-
             if self.transition:
                 transition_surf = pygame.Surface(self.display.get_size())
                 pygame.draw.circle(transition_surf, (255, 255, 255), (self.display.get_width() // 2, self.display.get_height() // 2), (30 - abs(self.transition)) * 8)
