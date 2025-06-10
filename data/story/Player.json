@@ -5,18 +5,35 @@
     "Melody_Song_flags": {},
     "Lyla_Silence_flags": {},
     "controls": {
-        "KEYDOWN": {
-            "K_x": "dash",
-            "K_LSHIFT": "startCasting",
-            "K_SPACE": "jump"
-        },
-        "KEYUP": {
-            "K_LSHIFT": "stopCasting"
+        "KEYBOARD": {
+            "a":{"action": "moveHorizontal","value":-1},
+            "left":{"action": "moveHorizontal","value":-1},
+            "d":{"action": "moveHorizontal","value":1},
+            "right":{"action": "moveHorizontal","value":1},
+            "w":{"action": "moveVirtical","value":1},
+            "up":{"action": "moveVirtical","value":-1},
+            "s":{"action": "moveVirtical","value":-1},
+            "down":{"action": "moveVirtical","value":1},
+            "1":{"action": "numbers","value":1},
+            "2":{"action": "numbers","value":2},
+            "3":{"action": "numbers","value":3},
+            "4":{"action": "numbers","value":4},
+            "5":{"action": "numbers","value":5},
+            "6":{"action": "numbers","value":6},
+            "7":{"action": "numbers","value":7},
+            "8":{"action": "numbers","value":8},
+            "9":{"action": "numbers","value":9},
+
+            "escape":{"action": "pause","value":1},
+            "x": {"action": "dash", "value":1},
+            "left shift": {"action": "startCasting", "value":1},
+            "space": {"action": "jump", "value":1}
+
         },
         "CONTROLLER": {
             "BUTTONDOWN": {
-                "0": "jump",
-                "1": "dash"
+                "0": {"action": "jump", "threshold": 0.5,"value":1},
+                "1": {"action": "dash", "threshold": 0.5,"value":1}
             },
             "AXISMOTION": {
                 "0": {"action": "moveHorizontal", "threshold": 0.2},

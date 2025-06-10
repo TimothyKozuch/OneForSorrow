@@ -29,7 +29,7 @@ class Game:
         self.font = pygame.font.Font(None, 36)
         self.current_dialogue = ''
         self.combatMode = True
-
+        self.running = True
 
         self.clock = pygame.time.Clock()
         
@@ -163,12 +163,12 @@ class Game:
     joysticks = [pygame.joystick.Joystick(i) for i in range(pygame.joystick.get_count())]
 
     def run(self):
-        running = True
+        self.running = True
         pygame.mixer.unpause()
         
         
 
-        while running:
+        while self.running:
             self.display.fill((0, 0, 0, 0))
             self.display_2.blit(self.assets['background'], (0, 0))
             
@@ -219,16 +219,11 @@ class Game:
                 self.player.update(self.tilemap, (self.movement[1] - self.movement[0], 0))
                 self.player.render(self.display, offset=render_scroll)
 
-            
-
-
                 # #RENDER_SCALE = 6
                 # mpos = pygame.mouse.get_pos()
                 # mpos = (mpos[0] *(320/self.info.current_w), mpos[1] *(240/self.info.current_h))
                 # pygame.draw.line(self.display, (0, 255, 0), (self.player.pos[0]-self.scroll[0], self.player.pos[1]-self.scroll[1]), (mpos[0],mpos[1]), 2)
             
-
-
             # [[x, y], direction, timer]
             for projectile in self.projectiles.copy():
                 projectile[0][0] += projectile[1]
@@ -273,67 +268,35 @@ class Game:
                     self.particles.remove(particle)
             
             for event in pygame.event.get():
-            #press x to quit
+
                 if event.type == pygame.QUIT:
                     pygame.quit()
                     sys.exit()
 
-                if event.type == pygame.KEYDOWN:
-                    #dialogue
-                    if pygame.K_1 <= event.key <= pygame.K_9:
-                        choice_number = event.key-pygame.K_0
-                        for friend in self.friends.copy():
-                            if self.player.rect().colliderect(friend.rect()):
-                                self.current_dialogue = friend.talk(choice_number)
-                    #pause
-                    if event.key == pygame.K_ESCAPE:
-                       running = False 
-                    if event.key in (pygame.K_LEFT, pygame.K_a):
-                        self.movement[0] = True
-                    if event.key in (pygame.K_RIGHT, pygame.K_d):
-                        self.movement[1] = True
-
-                    #custom keybinds for KEYDOWN
-                    for key_string, action in self.player_state["controls"]["KEYDOWN"].items():
-                        key_code = getattr(pygame, key_string, None)
-                        if key_code is not None and event.key == key_code:
-                            getattr(self.player, action)()
-                    
-
-                elif event.type == pygame.KEYUP:
-                    if event.key in (pygame.K_LEFT, pygame.K_a):
-                        self.movement[0] = False
-                    if event.key in (pygame.K_RIGHT, pygame.K_d):
-                        self.movement[1] = False
-
-                    #custom keybinds for KEYUP
-                    for key_string, action in self.player_state["controls"]["KEYUP"].items():
-                        key_code = getattr(pygame, key_string, None)
-                        if key_code is not None and event.key == key_code:
-                            getattr(self.player, action)()
+                if event.type==pygame.KEYUP or event.type==pygame.KEYDOWN:
+                    key_name = pygame.key.name(event.key) 
+                    keyBind = self.player_state["controls"]["KEYBOARD"]
+                    if key_name in keyBind:
+                        value = keyBind[key_name]["value"]
+                        if event.type == pygame.KEYUP:
+                            if key_name.isdigit():
+                                value =0
+                            else:
+                                value = value*2
+                        getattr(self.player, keyBind[key_name]["action"])(value)
                 
                 #controller support
                 elif event.type == pygame.JOYBUTTONDOWN:
-                    for button_string, action in self.player_state["controls"]["CONTROLLER"]["BUTTONDOWN"].items():
-                        button_num = int(button_string)
-                        if event.button == button_num:
-                            getattr(self.player, action)()
+                    buttonDown = self.player_state["controls"]["CONTROLLER"]["BUTTONDOWN"]
+                    if str(event.button) in buttonDown:
+                        getattr(self.player, buttonDown[str(event.button)]["action"])(event.value,buttonDown[str(event.button)]["threshold"])
 
                 elif event.type == pygame.JOYAXISMOTION:
-                    if str(event.axis) in self.player_state["controls"]["CONTROLLER"]["AXISMOTION"]:
-                        getattr(self.player, self.player_state["controls"]["CONTROLLER"]["AXISMOTION"][str(event.axis)]["action"])(self.player_state["controls"]["CONTROLLER"]["AXISMOTION"][str(event.axis)]["threshold"], event.value)
+                    axismotion = self.player_state["controls"]["CONTROLLER"]["AXISMOTION"]
+                    if str(event.axis) in axismotion:
+                        getattr(self.player, axismotion[str(event.axis)]["action"])(event.value,axismotion[str(event.axis)]["threshold"])
 
 
-                    # if event.axis == 1 and event.value > 0.5:
-                    #     print("Left joystick pushed down!")
-                    # if event.axis == 1 and event.value < -0.5:
-                    #     print("Left joystick pushed up!")
-                    # if event.axis == 2 and event.value > 0.5:
-                    #     print("Right joystick pushed right!")
-                    # if event.axis == 3 and event.value > 0.5:
-                    #     print("Right joystick pushed down!")
-                    # if event.axis == 4 and event.value > 0.5:
-                    #     print("Left trigger pressed!")
                     # if event.axis == 5 and event.value > 0.5:
                     #     print("Right trigger pressed!")
                     
@@ -343,7 +306,7 @@ class Game:
                 #mouse support
                 elif event.type == pygame.MOUSEBUTTONDOWN:
                     if event.button == 3:  # Right-click
-                        self.player.dash()
+                        self.player.dash(1)
                     
 
 

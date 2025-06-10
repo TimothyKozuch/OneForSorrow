@@ -312,47 +312,70 @@ class Player(PhysicsEntity):
             surf.blit(music_img, (self.pos[0] - offset[0] + self.anim_offset[0], self.pos[1] - offset[1] + self.anim_offset[1]))
 
             
+    def jump(self,value,threshold = 0.2):
+        if value <=1:
+            if self.wall_slide:
 
-        
+                if self.flip and self.last_movement[0] < 0:
+                    self.velocity[0] = 3.5
+                elif not self.flip and self.last_movement[0] > 0:
+                    self.velocity[0] = -3.5
 
-    def jump(self):
-        if self.wall_slide:
+                self.air_time = 0
+                #self.jumps = max(0, self.jumps - 1)
+                self.velocity[1] = -2.5
+                self.game.sfx['jump'].play()
 
-            if self.flip and self.last_movement[0] < 0:
-                self.velocity[0] = 3.5
-            elif not self.flip and self.last_movement[0] > 0:
-                self.velocity[0] = -3.5
-
-            self.air_time = 0
-            #self.jumps = max(0, self.jumps - 1)
-            self.velocity[1] = -2.5
-            self.game.sfx['jump'].play()
-
-            return True
-                
-        elif self.jumps:
-            self.velocity[1] = -3
-            self.jumps -= 1
-            self.air_time = 0
-            self.game.sfx['jump'].play()
-            return True
+                return True
+                    
+            elif self.jumps:
+                self.velocity[1] = -3
+                self.jumps -= 1
+                self.air_time = 0
+                self.game.sfx['jump'].play()
+                return True
+        return False
     
-    def dash(self,threshold = 0.5,value= 1):
-        if not self.dashing:
-            self.game.sfx['dash'].play()
-            if self.flip:
-                self.dashing = -60
-            else:
-                self.dashing = 60
+    def dash(self,value,threshold = 0.2):
+        if value<=1:
+            if not self.dashing:
+                self.game.sfx['dash'].play()
+                if self.flip:
+                    self.dashing = -60
+                else:
+                    self.dashing = 60
 
-    def startCasting(self,threshold = 0.5,value= 1):
-        self.casting = value > threshold
-    def stopCasting(self,threshold = 0.5,value= 1):
+    def startCasting(self,value,threshold = 0.2):
+        if value<=1:
+            self.casting = value > threshold
+        else:
+            self.casting=False
+        
+    def stopCasting(self,value,threshold = 0.2):
         self.casting =False
-    def moveHorizontal(self, threshold=0.2, value=0):
-        self.game.movement[0] = value < -threshold
-        self.game.movement[1] = value > threshold
+    def moveHorizontal(self,value,threshold = 0.2):
+        if (-1<=value<=1):
+            self.game.movement[0] = value < -threshold
+            self.game.movement[1] = value > threshold
+        elif value ==-2:
+            self.game.movement[0]=False
+        elif value==2:
+            self.game.movement[1]=False
 
-    def moveVirtical(self, threshold=0.2, value=0):
-        # If you want up/down movement, implement here
-        pass
+
+    def moveVirtical(self,value,threshold = 0.2):
+        if (-1<=value<=1):
+            if value>threshold:
+                self.jump(value)
+            if value<-threshold:
+                print("crouch")
+        else:
+            print("uncrouch")
+    def numbers(self,value,threshold = 0.2):
+        if value !=0:
+            for friend in self.game.friends.copy():
+                if self.rect().colliderect(friend.rect()):
+                    self.game.current_dialogue = friend.talk(value)
+    def pause(self,value,threshold = 0.2):
+        if value<=1:
+            self.game.running = not self.game.running
