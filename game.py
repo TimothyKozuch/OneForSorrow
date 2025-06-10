@@ -34,7 +34,7 @@ class Game:
         self.clock = pygame.time.Clock()
         
         self.movement = [False, False]
-        
+        self.axis_states = {}  # Add this line
         self.assets = {
             'decor': load_images('tiles/decor'),
             'grass': load_images('tiles/grass'),
@@ -159,6 +159,8 @@ class Game:
             text_surface = font.render(line, True, color)
             screen.blit(text_surface, (x, y + i * (font.get_height() + line_spacing)))
 
+    pygame.joystick.init()
+    joysticks = [pygame.joystick.Joystick(i) for i in range(pygame.joystick.get_count())]
 
     def run(self):
         running = True
@@ -292,7 +294,7 @@ class Game:
                         self.movement[1] = True
 
                     #custom keybinds for KEYDOWN
-                    for action, key_string in self.player_state["controls"]["KEYDOWN"].items():
+                    for key_string, action in self.player_state["controls"]["KEYDOWN"].items():
                         key_code = getattr(pygame, key_string, None)
                         if key_code is not None and event.key == key_code:
                             getattr(self.player, action)()
@@ -305,11 +307,39 @@ class Game:
                         self.movement[1] = False
 
                     #custom keybinds for KEYUP
-                    for action, key_string in self.player_state["controls"]["KEYUP"].items():
+                    for key_string, action in self.player_state["controls"]["KEYUP"].items():
                         key_code = getattr(pygame, key_string, None)
                         if key_code is not None and event.key == key_code:
                             getattr(self.player, action)()
+                
+                #controller support
+                elif event.type == pygame.JOYBUTTONDOWN:
+                    for button_string, action in self.player_state["controls"]["CONTROLLER"]["BUTTONDOWN"].items():
+                        button_num = int(button_string)
+                        if event.button == button_num:
+                            getattr(self.player, action)()
 
+                elif event.type == pygame.JOYAXISMOTION:
+                    if str(event.axis) in self.player_state["controls"]["CONTROLLER"]["AXISMOTION"]:
+                        getattr(self.player, self.player_state["controls"]["CONTROLLER"]["AXISMOTION"][str(event.axis)]["action"])(self.player_state["controls"]["CONTROLLER"]["AXISMOTION"][str(event.axis)]["threshold"], event.value)
+
+
+                    # if event.axis == 1 and event.value > 0.5:
+                    #     print("Left joystick pushed down!")
+                    # if event.axis == 1 and event.value < -0.5:
+                    #     print("Left joystick pushed up!")
+                    # if event.axis == 2 and event.value > 0.5:
+                    #     print("Right joystick pushed right!")
+                    # if event.axis == 3 and event.value > 0.5:
+                    #     print("Right joystick pushed down!")
+                    # if event.axis == 4 and event.value > 0.5:
+                    #     print("Left trigger pressed!")
+                    # if event.axis == 5 and event.value > 0.5:
+                    #     print("Right trigger pressed!")
+                    
+                    
+                elif event.type == pygame.JOYHATMOTION:
+                    print(event)
                 #mouse support
                 elif event.type == pygame.MOUSEBUTTONDOWN:
                     if event.button == 3:  # Right-click

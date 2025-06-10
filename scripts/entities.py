@@ -305,7 +305,7 @@ class Player(PhysicsEntity):
         elif abs(self.dashing) <= 50:
             super().render(surf, offset=offset)
 
-            
+
         if self.casting:
             music_anim = self.game.assets['particle/music']
             music_img = music_anim.img()  # Get current frame as a surface
@@ -337,7 +337,7 @@ class Player(PhysicsEntity):
             self.game.sfx['jump'].play()
             return True
     
-    def dash(self):
+    def dash(self,threshold = 0.5,value= 1):
         if not self.dashing:
             self.game.sfx['dash'].play()
             if self.flip:
@@ -345,8 +345,14 @@ class Player(PhysicsEntity):
             else:
                 self.dashing = 60
 
-    def startCasting(self):
-        self.casting = True
-
-    def stopCasting(self):
+    def startCasting(self,threshold = 0.5,value= 1):
+        self.casting = value > threshold
+    def stopCasting(self,threshold = 0.5,value= 1):
         self.casting =False
+    def moveHorizontal(self, threshold=0.2, value=0):
+        self.game.movement[0] = value < -threshold
+        self.game.movement[1] = value > threshold
+
+    def moveVirtical(self, threshold=0.2, value=0):
+        # If you want up/down movement, implement here
+        pass

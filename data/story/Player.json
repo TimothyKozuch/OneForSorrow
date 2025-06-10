@@ -1,12 +1,29 @@
 {
-    "controls":{
-        "KEYDOWN":{"dash":"K_x","startCasting":"K_LSHIFT","jump":"K_SPACE"},
-        "KEYUP":{"stopCasting":"K_LSHIFT"}
-    },
-    
     "playerLevel": 0,
     "inventory": {},
     "equipped": {},
     "Melody_Song_flags": {},
-    "Lyla_Silence_flags": {}
+    "Lyla_Silence_flags": {},
+    "controls": {
+        "KEYDOWN": {
+            "K_x": "dash",
+            "K_LSHIFT": "startCasting",
+            "K_SPACE": "jump"
+        },
+        "KEYUP": {
+            "K_LSHIFT": "stopCasting"
+        },
+        "CONTROLLER": {
+            "BUTTONDOWN": {
+                "0": "jump",
+                "1": "dash"
+            },
+            "AXISMOTION": {
+                "0": {"action": "moveHorizontal", "threshold": 0.2},
+                "1": {"action": "moveVirtical", "threshold": 0.2},
+                "4": {"action": "startCasting", "threshold": 0.5},
+                "5": {"action": "dash", "threshold": 0.5}
+            }
+        }
+    }
 }
