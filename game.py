@@ -59,9 +59,12 @@ class Game:
 
             'particle/leaf': Animation(load_images('particles/leaf'), img_dur=20, loop=False),
             'particle/particle': Animation(load_images('particles/particle'), img_dur=6, loop=False),
-            'particle/music': Animation(load_images('particles/music'), img_dur=20),
             'gun': load_image('gun.png'),
             'projectile': load_image('projectile.png'),
+
+            'particle/music/clef': Animation(load_images('particles/music/clef'), img_dur=10),
+            'particle/music/key_signature': Animation(load_images('particles/music/key_signature'), img_dur=10),
+            'particle/music/time_signature': Animation(load_images('particles/music/time_signature'), img_dur=10)
         }
         
         self.sfx = {

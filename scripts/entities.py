@@ -308,10 +308,10 @@ class Player(PhysicsEntity):
 
 
         if self.casting:
-            music_anim = self.game.assets['particle/music']
+            music_anim = self.game.assets['particle/music/clef']
             music_anim.update()
             music_img = music_anim.img()  # Get current frame as a surface
-            surf.blit(music_img, (self.pos[0] - offset[0] + self.anim_offset[0], self.pos[1] - offset[1] + self.anim_offset[1]))
+            surf.blit(music_img, (self.pos[0] - offset[0] + self.anim_offset[0], self.pos[1] - offset[1] + self.anim_offset[1]-25))
 
             
     def jump(self,value,sensitivity = 0.2):
@@ -353,9 +353,8 @@ class Player(PhysicsEntity):
             self.casting = value > sensitivity
         else:
             self.casting=False
-
         if self.casting and not was_casting:
-            self.game.assets['particle/music'].frame = 0
+            self.game.assets['particle/music/clef'].frame = 0
         
     def stopCasting(self,value,sensitivity = 0.2):
         self.casting =False
