@@ -60,11 +60,15 @@ class Game:
             'particle/leaf': Animation(load_images('particles/leaf'), img_dur=20, loop=False),
             'particle/particle': Animation(load_images('particles/particle'), img_dur=6, loop=False),
             'gun': load_image('gun.png'),
-            'projectile': load_image('projectile.png'),
 
-            'particle/music/clef': Animation(load_images('particles/music/clef'), img_dur=10),
-            'particle/music/key_signature': Animation(load_images('particles/music/key_signature'), img_dur=10),
-            'particle/music/time_signature': Animation(load_images('particles/music/time_signature'), img_dur=10)
+            'music/clefs': Animation(load_images('music/clefs'), img_dur=10,loop=False),
+            'music/key_signatures/flats': Animation(load_images('music/key_signatures/flats'), img_dur=10,loop=False),
+            'music/key_signatures/sharps': Animation(load_images('music/key_signatures/sharps'), img_dur=10,loop=False),
+            'music/notes/rests': Animation(load_images('music/notes/rests'), img_dur=10,loop=False),
+            'music/notes/stem_down': Animation(load_images('music/notes/stem_down'), img_dur=10,loop=False),
+            'music/notes/stem_up': Animation(load_images('music/notes/stem_up'), img_dur=10,loop=False),
+            'music/time_signature': Animation(load_images('music/time_signature'), img_dur=10,loop=False),
+            "music/staf_0": load_image('music/staf_0.png')
         }
         
         self.sfx = {
