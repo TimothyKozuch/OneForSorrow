@@ -308,12 +308,25 @@ class Player(PhysicsEntity):
 
 
         if self.casting:
-            music_anim = self.game.assets['music/clefs']
-            music_anim.update()
-            music_img = music_anim.img()  # Get current frame as a surface
-            surf.blit(music_img, (self.pos[0] - offset[0] + self.anim_offset[0], self.pos[1] - offset[1] + self.anim_offset[1]-25))
+            self.staf(surf,7,offset)
 
+            clef_anim = self.game.assets['music/clefs']
+            clef_anim.update()
+            clef_img = clef_anim.img()  # Get current frame as a surface
+            surf.blit(clef_img, (self.pos[0] - offset[0] + self.anim_offset[0], self.pos[1] - offset[1] + self.anim_offset[1]-25))
+
+            keySig_anim = self.game.assets['music/key_signatures/'+"sharps"]
+            keySig_anim.update()
+            keySig_img = keySig_anim.img()  # Get current frame as a surface
+            surf.blit(keySig_img, (self.pos[0] - offset[0] + self.anim_offset[0], self.pos[1] - offset[1] + self.anim_offset[1]-25))
+
+            timeSig_anim = self.game.assets['music/time_signature']
+            timeSig_anim.update()
+            timeSig_img = timeSig_anim.img()  # Get current frame as a surface
+            surf.blit(timeSig_img, (self.pos[0] - offset[0] + self.anim_offset[0], self.pos[1] - offset[1] + self.anim_offset[1]-25))
             
+            
+
     def jump(self,value,sensitivity = 0.2):
         if value <=1:
             if self.wall_slide:
@@ -359,6 +372,16 @@ class Player(PhysicsEntity):
     
     def restartCasting(self):
         self.game.assets['music/clefs'].frame = 0
+        self.game.assets['music/key_signatures/flats'].frame = 0
+        self.game.assets['music/key_signatures/sharps'].frame = 0
+        self.game.assets['music/time_signature'].frame = 0
+        
+    def staf(self,surf,num=7,offset=(0, 0)):
+        staf_offset=0
+        while num>0:
+            surf.blit(self.game.assets["music/staf"], (self.pos[0] - offset[0] + self.anim_offset[0]+staf_offset, self.pos[1] - offset[1] + self.anim_offset[1]-25))
+            staf_offset+=5
+            num-=1
 
     def moveHorizontal(self,value,sensitivity = 0.2):
         if (-1<=value<=1):
