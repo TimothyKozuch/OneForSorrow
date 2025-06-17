@@ -308,7 +308,13 @@ class Player(PhysicsEntity):
 
 
         if self.casting:
-            self.staf(surf,7,offset)
+            #staf
+            num=9
+            staf_offset=0
+            while num>0:
+                surf.blit(self.game.assets["music/staf"], (self.pos[0] - offset[0] + self.anim_offset[0]+staf_offset, self.pos[1] - offset[1] + self.anim_offset[1]-25))
+                staf_offset+=5
+                num-=1
 
             clef_anim = self.game.assets['music/clefs']
             clef_anim.update()
@@ -324,8 +330,38 @@ class Player(PhysicsEntity):
             timeSig_anim.update()
             timeSig_img = timeSig_anim.img()  # Get current frame as a surface
             surf.blit(timeSig_img, (self.pos[0] - offset[0] + self.anim_offset[0], self.pos[1] - offset[1] + self.anim_offset[1]-25))
+
+            stem_up_anim = self.game.assets['music/notes/stem_up']
+            stem_up_anim.update()
+            stem_up_img = stem_up_anim.img()  # Get current frame as a surface
+            surf.blit(stem_up_img, (self.pos[0] - offset[0] + self.anim_offset[0]+40, self.pos[1] - offset[1] + self.anim_offset[1]-25+11))
             
             
+    def closestFriend(self, surf, offset=(0, 0), max_distance=25):
+        closest = None
+        closest_dist = float('inf')
+        player_rect = self.rect()
+        for friend in self.game.friends:
+            dist = math.hypot(
+                player_rect.centerx - friend.rect().centerx,
+                player_rect.centery - friend.rect().centery
+            )
+            if dist < closest_dist and dist <= max_distance:
+                closest = friend
+                closest_dist = dist
+        if closest:
+            icon_anim = self.game.assets['friend/closest_friend']
+            if hasattr(icon_anim, 'update'):
+                icon_anim.update()
+                icon = icon_anim.img()
+            else:
+                icon = icon_anim
+            friend_rect = closest.rect()
+            icon_x = friend_rect.centerx - offset[0] - icon.get_width() // 2
+            icon_y = friend_rect.top - offset[1] - icon.get_height()+10  # 4px above head
+            surf.blit(icon, (icon_x, icon_y))
+        return closest
+
 
     def jump(self,value,sensitivity = 0.2):
         if value <=1:
@@ -375,13 +411,10 @@ class Player(PhysicsEntity):
         self.game.assets['music/key_signatures/flats'].frame = 0
         self.game.assets['music/key_signatures/sharps'].frame = 0
         self.game.assets['music/time_signature'].frame = 0
+        self.game.assets['music/notes/stem_up'].frame = 0
         
-    def staf(self,surf,num=7,offset=(0, 0)):
-        staf_offset=0
-        while num>0:
-            surf.blit(self.game.assets["music/staf"], (self.pos[0] - offset[0] + self.anim_offset[0]+staf_offset, self.pos[1] - offset[1] + self.anim_offset[1]-25))
-            staf_offset+=5
-            num-=1
+        
+    
 
     def moveHorizontal(self,value,sensitivity = 0.2):
         if (-1<=value<=1):
@@ -405,12 +438,12 @@ class Player(PhysicsEntity):
             print("uncrouch")
 
     def scroll(self, value, sensitivity=0.2):
-        for friend in self.game.friends.copy():
-            if self.rect().colliderect(friend.rect()):
-                if "choices" in friend.current_dialogue and len(friend.current_dialogue["choices"]) > 0:
-                    if (-1<=value<=1):
-                        self.selecting = (self.selecting + value) % len(friend.current_dialogue["choices"])
-                        print(self.selecting)
+        friend = self.game.closestFriend
+        if friend:
+            if "choices" in friend.current_dialogue and len(friend.current_dialogue["choices"]) > 0:
+                if (-1<=value<=1):
+                    self.selecting = (self.selecting + value) % len(friend.current_dialogue["choices"])
+                    print(self.selecting)
     
     def interact(self, value, sensitivity=0.2):
         if value<0:
@@ -419,11 +452,10 @@ class Player(PhysicsEntity):
             value= self.selecting
         else:
             value= value-1 #using number keys
-        for friend in self.game.friends.copy():
-                if self.rect().colliderect(friend.rect()):
-                    self.game.current_dialogue = friend.talk(value)
-                    self.selecting=0
-                    continue
+        friend = self.game.closestFriend
+        if friend:
+            self.game.current_dialogue = friend.talk(value)
+            self.selecting=0
 
     def pause(self,value,sensitivity = 0.2):
         if value<=1:

@@ -15,7 +15,9 @@
             "s":{"action": "moveVirtical","value":1},
             "down":{"action": "moveVirtical","value":1},
 
+
             "e": {"action": "interact", "value":0},
+
             "1":{"action": "interact","value":1},
             "2":{"action": "interact","value":2},
             "3":{"action": "interact","value":3},
@@ -45,7 +47,6 @@
                 "2": {"action": "jump", "value":1},
                 "(0, 1)": {"action": "scroll", "value":-1},
                 "(0, -1)": {"action": "scroll", "value":1}
-                
             },
             "AXISMOTION": {
                 "0": {"action": "moveHorizontal", "sensitivity": 0.2},

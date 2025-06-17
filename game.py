@@ -25,6 +25,7 @@ class Game:
         self.display_2 = pygame.Surface((320, 240))
 
         self.font = pygame.font.Font(None, 36)
+        self.closestFriend = None
         self.current_dialogue = ''
         self.combatMode = True
         self.running = True
@@ -33,6 +34,8 @@ class Game:
         
         self.movement = [False, False]
         self.axis_states = {}  # Add this line
+
+
         self.assets = {
             'decor': load_images('tiles/decor'),
             'grass': load_images('tiles/grass'),
@@ -47,6 +50,7 @@ class Game:
             'enemy/run': Animation(load_images('entities/enemy/run'), img_dur=4),
 
             'friend/idle': Animation(load_images('entities/friend/idle'), img_dur=6),
+            'friend/closest_friend': Animation(load_images('entities/friend/closest_friend'), img_dur=10),
 
             'player/lyla_idle': Animation(load_images('entities/player/lyla_idle'), img_dur=6),
             'player/lyla_run': Animation(load_images('entities/player/lyla_run'), img_dur=4),
@@ -217,6 +221,10 @@ class Game:
                 friend.render(self.display, offset=render_scroll)
                 if kill:
                     print(friend.woah())
+                    
+            self.closestFriend = self.player.closestFriend(self.display, offset=render_scroll) #interact icon
+            
+
 
             if not self.dead:
                 self.player.update(self.tilemap, (self.movement[1] - self.movement[0], 0))
