@@ -25,8 +25,11 @@ class Game:
         self.display_2 = pygame.Surface((320, 240))
 
         self.font = pygame.font.Font(None, 36)
+
         self.closestFriend = None
         self.current_dialogue = ''
+        self.input_mode = "KEYBOARD"  # or "CONTROLLER"
+        self.awaiting_rebind = None
         self.combatMode = True
         self.running = True
 
@@ -167,9 +170,7 @@ class Game:
         for i, line in enumerate(lines):
             text_surface = font.render(line, True, color)
             screen.blit(text_surface, (x, y + i * (font.get_height() + line_spacing)))
-
-    pygame.joystick.init()
-    joysticks = [pygame.joystick.Joystick(i) for i in range(pygame.joystick.get_count())]
+    
 
     def run(self):
         self.running = True
@@ -180,6 +181,8 @@ class Game:
             self.display_2.blit(self.assets['background'], (0, 0))
             
             self.screenshake = max(0, self.screenshake - 1)
+
+            joysticks = {}
             
             if not len(self.enemies):
                 self.transition += 1
@@ -279,46 +282,75 @@ class Game:
                     self.particles.remove(particle)
             
             for event in pygame.event.get():
+                if event.type == pygame.JOYDEVICEADDED:
+                    # This event will be generated when the program starts for every
+                    # joystick, filling up the list without needing to create them manually.
+                    joy = pygame.joystick.Joystick(event.device_index)
+                    joysticks[joy.get_instance_id()] = joy
+
+                if event.type == pygame.JOYDEVICEREMOVED:
+                    del joysticks[event.instance_id]
 
                 if event.type == pygame.QUIT:
                     pygame.quit()
                     sys.exit()
                 #keyboard and mouse
-                elif event.type==pygame.KEYUP or event.type==pygame.KEYDOWN or event.type == pygame.MOUSEBUTTONDOWN:
-                    if event.type==pygame.KEYUP or event.type==pygame.KEYDOWN:
-                        key_name = pygame.key.name(event.key) 
-                    elif event.type == pygame.MOUSEBUTTONDOWN:
-                        key_name = "mouse_"+str(event.button)
+                elif event.type in (pygame.KEYUP, pygame.KEYDOWN, pygame.MOUSEBUTTONDOWN, pygame.MOUSEBUTTONUP):
+                    self.input_mode = "KEYBOARD"
+                    
+                    # Get the key/button name
+                    if event.type in (pygame.KEYUP, pygame.KEYDOWN):
+                        key_name = pygame.key.name(event.key)
+                    elif event.type in (pygame.MOUSEBUTTONDOWN, pygame.MOUSEBUTTONUP):
+                        key_name = "mouse_" + str(event.button)
+                    
                     keyBind = self.player_state["controls"]["KEYBOARD"]
                     if key_name in keyBind:
-                        value = keyBind[key_name]["value"]
-                        if event.type == pygame.KEYUP or event.type == pygame.MOUSEBUTTONUP:
-                            if keyBind[key_name]["action"]=="interact":
-                                value =-1
+                        keyBinding = keyBind[key_name]
+                        value = keyBinding["value"]
+                        
+                        # Handle key/button release
+                        if event.type in (pygame.KEYUP, pygame.MOUSEBUTTONUP):
+                            if keyBinding["action"] == "interact":
+                                value = -1
                             else:
-                                value = value*2
-                        getattr(self.player, keyBind[key_name]["action"])(value)
+                                value = value * 2
+                        
+                        # Execute action safely
+                        if hasattr(self.player, keyBinding["action"]):
+                            if "sensitivity" in keyBinding:
+                                getattr(self.player, keyBinding["action"])(value, keyBinding["sensitivity"])
+                            else:
+                                getattr(self.player, keyBinding["action"])(value)
                 
                 #controller support
-                elif event.type == pygame.JOYBUTTONDOWN or event.type == pygame.JOYBUTTONUP or event.type == pygame.JOYHATMOTION:
-                    keyBind = self.player_state["controls"]["CONTROLLER"]["BUTTONDOWN"]
+                elif event.type in (pygame.JOYBUTTONDOWN, pygame.JOYBUTTONUP, pygame.JOYHATMOTION, pygame.JOYAXISMOTION):
+                    self.input_mode = "CONTROLLER"
+                    keyBind = self.player_state["controls"]["CONTROLLER"]
+                    
+                    # Map event types to button name formats
                     if event.type == pygame.JOYBUTTONDOWN or event.type == pygame.JOYBUTTONUP:
-                        button_name = str(event.button)
+                        button_name = f"BUTTONDOWN_{event.button}"
                     elif event.type == pygame.JOYHATMOTION:
-                        button_name = str(event.value)
+                        button_name = f"HATMOTION_{event.value}"
+                    elif event.type == pygame.JOYAXISMOTION:
+                        button_name = f"AXISMOTION_{event.axis}"
+                    
                     if button_name in keyBind:
-                        value = keyBind[button_name]["value"]
+                        keyBinding = keyBind[button_name]
+                        value = keyBinding.get("value", getattr(event, "value", None))
+                        
+                        # Handle button release
                         if event.type == pygame.JOYBUTTONUP:
-                            if keyBind[button_name]["action"]=="interact":
-                                value =-1
+                            value = -1 if keyBinding["action"] == "interact" else value * 2
+                        
+                        # Execute action
+                        if hasattr(self.player, keyBinding["action"]):
+                            if "sensitivity" in keyBinding:
+                                getattr(self.player, keyBinding["action"])(value, keyBinding["sensitivity"])
                             else:
-                                value = value*2
-                        getattr(self.player, keyBind[button_name]["action"])(value)
+                                getattr(self.player, keyBinding["action"])(value)
 
-                elif event.type == pygame.JOYAXISMOTION:
-                    axismotion = self.player_state["controls"]["CONTROLLER"]["AXISMOTION"]
-                    if str(event.axis) in axismotion:
-                        getattr(self.player, axismotion[str(event.axis)]["action"])(event.value,axismotion[str(event.axis)]["sensitivity"])
 
 
                     # if event.axis == 5 and event.value > 0.5:
@@ -345,21 +377,181 @@ class Game:
         self.pause()
 
     def pause(self):
-        pygame.mixer.pause()
         paused = True
+        clock = pygame.time.Clock()
+        button_height = 40
+        col_spacing = 30
+        y_start = 20
+        selected_index = 0  # Track selected keybind
+
+        # Key formatting mappings
+        key_formatters = {
+            "BUTTONDOWN_": lambda x: f"Button {x.split('_')[1]}",
+            "AXISMOTION_": lambda x: f"Axis {x.split('_')[1]}",
+            "HATMOTION_": lambda x: f"Hat {x.split('_')[1]}",
+            "mouse_": lambda x: f"Mouse {x.split('_')[1]}"
+        }
+
+        # Event to key name mappings for controller
+        controller_event_map = {
+            pygame.JOYBUTTONDOWN: lambda e: f"BUTTONDOWN_{e.button}",
+            pygame.JOYAXISMOTION: lambda e: f"AXISMOTION_{e.axis}",
+            pygame.JOYHATMOTION: lambda e: f"HATMOTION_{e.value}"
+        }
+
         while paused:
+            sw, sh = self.screen.get_size()
+            button_width = sw // 4
+            max_per_col = max(1, (sh - 2 * y_start) // (button_height + 10))
+
+            keybinds = self.player_state["controls"][self.input_mode]
+            keybind_list = sorted(keybinds.items(), key=lambda item: (item[1]["action"], item[0]))
+
+            # Clamp selected index to valid range
+            selected_index = max(0, min(selected_index, len(keybind_list) - 1))
+
+            num_cols = (len(keybind_list) + max_per_col - 1) // max_per_col
+            total_width = num_cols * button_width + (num_cols - 1) * col_spacing
+            x_start = (sw - total_width) // 2
+            mx, my = pygame.mouse.get_pos()
+
+            # --- Event Handling ---
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
-                        pygame.quit()
-                        sys.exit()
-                if event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_m:
-                        self.combatMode= not self.combatMode
+                    pygame.quit()
+                    sys.exit()
+                elif event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_ESCAPE:
-                       paused = False
-                
-        self.run()
+                        if self.awaiting_rebind:
+                            self.awaiting_rebind = None
+                        else:
+                            paused = False
+                    elif event.key == pygame.K_RETURN and not self.awaiting_rebind:
+                        # Enter key selects current item
+                        if keybind_list:
+                            self.awaiting_rebind = keybind_list[selected_index][0]
+                    elif event.key == pygame.K_UP and not self.awaiting_rebind:
+                        selected_index = (selected_index - 1) % len(keybind_list)
+                    elif event.key == pygame.K_DOWN and not self.awaiting_rebind:
+                        selected_index = (selected_index + 1) % len(keybind_list)
+                    elif self.awaiting_rebind and self.input_mode == "KEYBOARD":
+                        new_key = pygame.key.name(event.key)
+                        if new_key not in keybinds:
+                            keybinds[new_key] = keybinds.pop(self.awaiting_rebind)
+                            self.awaiting_rebind = None
+                elif event.type == pygame.MOUSEBUTTONDOWN:
+                    if self.awaiting_rebind and self.input_mode == "KEYBOARD":
+                        new_key = f"mouse_{event.button}"
+                        if new_key not in keybinds:
+                            keybinds[new_key] = keybinds.pop(self.awaiting_rebind)
+                            self.awaiting_rebind = None
+                    else:
+                        # Handle button clicks
+                        x, y, col = x_start, y_start, 0
+                        for idx, (key_name, bind) in enumerate(keybind_list):
+                            btn_rect = pygame.Rect(x, y, button_width, button_height)
+                            if btn_rect.collidepoint(mx, my):
+                                self.awaiting_rebind = key_name
+                                break
+                            y += button_height + 10
+                            if (idx + 1) % max_per_col == 0:
+                                y = y_start
+                                col += 1
+                                x = x_start + col * (button_width + col_spacing)
+                elif event.type == pygame.JOYBUTTONDOWN and not self.awaiting_rebind:
+                    if event.button == 7:
+                        if self.awaiting_rebind:
+                            self.awaiting_rebind = None
+                        else:
+                            paused = False
+                    if event.button == 0:  # A button (usually button 0)
+                        if keybind_list:
+                            self.awaiting_rebind = keybind_list[selected_index][0]
+                elif event.type == pygame.JOYHATMOTION and not self.awaiting_rebind:
+                    if event.value == (0, 1):  # Up
+                        selected_index = (selected_index - 1) % len(keybind_list)
+                    elif event.value == (0, -1):  # Down
+                        selected_index = (selected_index + 1) % len(keybind_list)
+                elif self.awaiting_rebind and self.input_mode == "CONTROLLER" and event.type in controller_event_map:
+                    # Handle controller rebinding using the mapping
+                    new_key = controller_event_map[event.type](event)
+                    if new_key not in keybinds:
+                        keybinds[new_key] = keybinds.pop(self.awaiting_rebind)
+                        self.awaiting_rebind = None
 
+            # --- Drawing ---
+            scaled = pygame.transform.scale(self.display, self.screen.get_size())
+            self.screen.blit(scaled, (0, 0))
+            
+            overlay = pygame.Surface(self.screen.get_size(), pygame.SRCALPHA)
+            overlay.fill((0, 0, 0, 180))
+            self.screen.blit(overlay, (0, 0))
+
+            # Draw keybind buttons
+            x, y, col = x_start, y_start, 0
+            for idx, (key_name, bind) in enumerate(keybind_list):
+                action = bind["action"]
+                btn_rect = pygame.Rect(x, y, button_width, button_height)
+                
+                # Determine colors
+                if self.awaiting_rebind == key_name:
+                    color, text_color = (200, 100, 100), (255, 255, 255)
+                elif idx == selected_index:
+                    color, text_color = (100, 150, 100), (255, 255, 255)  # Green for selected
+                elif btn_rect.collidepoint(mx, my):
+                    color, text_color = (120, 120, 200), (255, 255, 0)
+                else:
+                    color, text_color = (60, 60, 60), (255, 255, 255)
+                
+                pygame.draw.rect(self.screen, color, btn_rect)
+                
+                # Format key name using mapping
+                display_key = key_name.capitalize()  # Default
+                for prefix, formatter in key_formatters.items():
+                    if key_name.startswith(prefix):
+                        display_key = formatter(key_name)
+                        break
+                
+                text = self.font.render(f"{action.capitalize()}: {display_key}", True, text_color)
+                self.screen.blit(text, (btn_rect.x + 5, btn_rect.y + 5))
+                
+                y += button_height + 10
+                if (idx + 1) % max_per_col == 0:
+                    y = y_start
+                    col += 1
+                    x = x_start + col * (button_width + col_spacing)
+
+            # Draw rebind prompt
+            if self.awaiting_rebind:
+                input_type = "button/axis/hat" if self.input_mode == "CONTROLLER" else "key or mouse button"
+                
+                # Format awaiting rebind key name
+                display_key = self.awaiting_rebind.capitalize()
+                for prefix, formatter in key_formatters.items():
+                    if self.awaiting_rebind.startswith(prefix):
+                        display_key = formatter(self.awaiting_rebind)
+                        break
+                
+                prompt = self.font.render(
+                    f"Press a {input_type} for '{display_key}'... (ESC to cancel)",
+                    True, (255, 255, 0)
+                )
+                self.screen.blit(prompt, (x_start, sh - 50))
+            else:
+                # Show navigation instructions
+                if self.input_mode == "CONTROLLER":
+                    instruction = "Use D-pad to navigate, A to select, ESC to exit"
+                else:
+                    instruction = "Use arrow keys to navigate, Enter to select, ESC to exit"
+                
+                instruction_text = self.font.render(instruction, True, (200, 200, 200))
+                self.screen.blit(instruction_text, (x_start, sh - 50))
+
+            pygame.display.update()
+            clock.tick(60)
+        
+        self.awaiting_rebind = None
+        self.run()
 
 
 Game().run()
