@@ -29,6 +29,7 @@
             "9":{"action": "interact","value":9},
 
             "escape":{"action": "pause","value":1},
+            "c":{"action": "compose","value":1},
             "x": {"action": "dash", "value":1},
             "left shift": {"action": "startCasting", "value":1},
             "space": {"action": "jump", "value":1},
@@ -44,10 +45,11 @@
             "BUTTONDOWN_0": {"action": "interact", "value":0},
             "BUTTONDOWN_1": {"action": "dash", "value":1},
             "BUTTONDOWN_2": {"action": "jump", "value":1},
+            "BUTTONDOWN_7": {"action": "pause", "value":1},
+
             "HATMOTION_(0, 1)": {"action": "scroll", "value":-1},
             "HATMOTION_(0, -1)": {"action": "scroll", "value":1},
-            "BUTTONDOWN_7": {"action": "pause", "value":1},
-        
+            
             "AXISMOTION_0": {"action": "moveHorizontal", "sensitivity": 0.2},
             "AXISMOTION_1": {"action": "moveVirtical", "sensitivity": 0.2},
             "AXISMOTION_4": {"action": "startCasting", "sensitivity": 0.5},

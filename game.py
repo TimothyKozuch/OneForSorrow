@@ -8,6 +8,7 @@ import pygame
 import json
 
 from scripts.utils import load_image, load_images, Animation
+from scripts.compose import Composition
 from scripts.entities import PhysicsEntity, Player, Enemy, Friend
 from scripts.tilemap import Tilemap
 from scripts.clouds import Clouds
@@ -26,12 +27,13 @@ class Game:
 
         self.font = pygame.font.Font(None, 36)
 
-        self.closestFriend = None
-        self.current_dialogue = ''
         self.input_mode = "KEYBOARD"  # or "CONTROLLER"
         self.awaiting_rebind = None
-        self.combatMode = True
         self.running = True
+
+        self.closestFriend = None
+        self.current_dialogue = ''
+        
 
         self.clock = pygame.time.Clock()
         
@@ -95,7 +97,15 @@ class Game:
         self.clouds = Clouds(self.assets['clouds'], count=16)
         #8,15
         self.player = Player(self, (50, 50), (28, 30),[self.info.current_w,self.info.current_h])
-        
+
+        self.measuresUnlocked = []
+        self.clefsUnlocked = []
+        self.keysignaturesUnlocked = []
+        self.timeSignaturesUnlocked = []
+        self.notesUnlocked = []
+        self.compositions = {}
+        self.team = ["Lyla", "Melody", "Corwin"]
+
         self.tilemap = Tilemap(self, tile_size=16)
         
         self.level = 0
@@ -128,6 +138,10 @@ class Game:
         f.close()
 
         self.player_flags ={'Melody_Song_flags':self.player_state['Melody_Song_flags'],'Lyla_Silence_flags':self.player_state['Lyla_Silence_flags']} 
+
+        # self.compositions["Lyla"] = [Composition(self.assets,self.measuresUnlocked,self.clefsUnlocked,self.keysignaturesUnlocked,self.timeSignaturesUnlocked,self.notesUnlocked)]
+
+        # self.compositions["Melody"] = [Composition(self.assets,self.measuresUnlocked,self.clefsUnlocked,self.keysignaturesUnlocked,self.timeSignaturesUnlocked,self.notesUnlocked)]
 
         #replaces each of the spawners with its character
         for spawner in self.tilemap.extract([('spawners', i) for i in range(len(os.listdir('data/images/tiles/spawners')))]):
@@ -375,16 +389,19 @@ class Game:
             self.clock.tick(60)
 
         self.pause()
-
+  
+  
     def pause(self):
         paused = True
         clock = pygame.time.Clock()
         button_height = 40
         col_spacing = 30
-        y_start = 20
-        selected_index = 0  # Track selected keybind
+        y_start = 80  # Leave space for tabs
+        selected_index = 0
+        selected_tab = 0
+        tabs = ["Settings", "Inventory", "Team"]  # Removed "Compose" tab
 
-        # Key formatting mappings
+        # Settings-specific variables
         key_formatters = {
             "BUTTONDOWN_": lambda x: f"Button {x.split('_')[1]}",
             "AXISMOTION_": lambda x: f"Axis {x.split('_')[1]}",
@@ -392,7 +409,6 @@ class Game:
             "mouse_": lambda x: f"Mouse {x.split('_')[1]}"
         }
 
-        # Event to key name mappings for controller
         controller_event_map = {
             pygame.JOYBUTTONDOWN: lambda e: f"BUTTONDOWN_{e.button}",
             pygame.JOYAXISMOTION: lambda e: f"AXISMOTION_{e.axis}",
@@ -402,17 +418,7 @@ class Game:
         while paused:
             sw, sh = self.screen.get_size()
             button_width = sw // 4
-            max_per_col = max(1, (sh - 2 * y_start) // (button_height + 10))
-
-            keybinds = self.player_state["controls"][self.input_mode]
-            keybind_list = sorted(keybinds.items(), key=lambda item: (item[1]["action"], item[0]))
-
-            # Clamp selected index to valid range
-            selected_index = max(0, min(selected_index, len(keybind_list) - 1))
-
-            num_cols = (len(keybind_list) + max_per_col - 1) // max_per_col
-            total_width = num_cols * button_width + (num_cols - 1) * col_spacing
-            x_start = (sw - total_width) // 2
+            tab_width = sw // len(tabs)
             mx, my = pygame.mouse.get_pos()
 
             # --- Event Handling ---
@@ -420,61 +426,134 @@ class Game:
                 if event.type == pygame.QUIT:
                     pygame.quit()
                     sys.exit()
+                
                 elif event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_ESCAPE:
                         if self.awaiting_rebind:
                             self.awaiting_rebind = None
                         else:
                             paused = False
-                    elif event.key == pygame.K_RETURN and not self.awaiting_rebind:
-                        # Enter key selects current item
-                        if keybind_list:
-                            self.awaiting_rebind = keybind_list[selected_index][0]
-                    elif event.key == pygame.K_UP and not self.awaiting_rebind:
-                        selected_index = (selected_index - 1) % len(keybind_list)
-                    elif event.key == pygame.K_DOWN and not self.awaiting_rebind:
-                        selected_index = (selected_index + 1) % len(keybind_list)
-                    elif self.awaiting_rebind and self.input_mode == "KEYBOARD":
-                        new_key = pygame.key.name(event.key)
-                        if new_key not in keybinds:
-                            keybinds[new_key] = keybinds.pop(self.awaiting_rebind)
-                            self.awaiting_rebind = None
+                    elif event.key == pygame.K_LEFT and not self.awaiting_rebind:
+                        selected_tab = (selected_tab - 1) % len(tabs)
+                        selected_index = 0  # Reset selection when changing tabs
+                    elif event.key == pygame.K_RIGHT and not self.awaiting_rebind:
+                        selected_tab = (selected_tab + 1) % len(tabs)
+                        selected_index = 0  # Reset selection when changing tabs
+                    
+                    # Settings-specific keyboard handling
+                    elif tabs[selected_tab] == "Settings":
+                        if event.key == pygame.K_RETURN and not self.awaiting_rebind:
+                            keybinds = self.player_state["controls"][self.input_mode]
+                            keybind_list = sorted(keybinds.items(), key=lambda item: (item[1]["action"], item[0]))
+                            if keybind_list and selected_index < len(keybind_list):
+                                self.awaiting_rebind = keybind_list[selected_index][0]
+                        elif event.key == pygame.K_UP and not self.awaiting_rebind:
+                            keybinds = self.player_state["controls"][self.input_mode]
+                            keybind_list = sorted(keybinds.items(), key=lambda item: (item[1]["action"], item[0]))
+                            if keybind_list:
+                                selected_index = (selected_index - 1) % len(keybind_list)
+                        elif event.key == pygame.K_DOWN and not self.awaiting_rebind:
+                            keybinds = self.player_state["controls"][self.input_mode]
+                            keybind_list = sorted(keybinds.items(), key=lambda item: (item[1]["action"], item[0]))
+                            if keybind_list:
+                                selected_index = (selected_index + 1) % len(keybind_list)
+                        elif self.awaiting_rebind and self.input_mode == "KEYBOARD":
+                            # Handle key rebinding
+                            new_key = pygame.key.name(event.key)
+                            keybinds = self.player_state["controls"][self.input_mode]
+                            if new_key not in keybinds:
+                                keybinds[new_key] = keybinds.pop(self.awaiting_rebind)
+                                self.awaiting_rebind = None
+
                 elif event.type == pygame.MOUSEBUTTONDOWN:
-                    if self.awaiting_rebind and self.input_mode == "KEYBOARD":
-                        new_key = f"mouse_{event.button}"
-                        if new_key not in keybinds:
-                            keybinds[new_key] = keybinds.pop(self.awaiting_rebind)
-                            self.awaiting_rebind = None
-                    else:
-                        # Handle button clicks
-                        x, y, col = x_start, y_start, 0
-                        for idx, (key_name, bind) in enumerate(keybind_list):
-                            btn_rect = pygame.Rect(x, y, button_width, button_height)
-                            if btn_rect.collidepoint(mx, my):
-                                self.awaiting_rebind = key_name
-                                break
-                            y += button_height + 10
-                            if (idx + 1) % max_per_col == 0:
-                                y = y_start
-                                col += 1
-                                x = x_start + col * (button_width + col_spacing)
-                elif event.type == pygame.JOYBUTTONDOWN and not self.awaiting_rebind:
-                    if event.button == 7:
+                    # Tab click detection
+                    for i, tab in enumerate(tabs):
+                        tab_rect = pygame.Rect(i * tab_width, 0, tab_width, button_height)
+                        if tab_rect.collidepoint(mx, my):
+                            selected_tab = i
+                            selected_index = 0  # Reset selection when changing tabs
+                            break
+                    
+                    # Settings-specific mouse handling
+                    if tabs[selected_tab] == "Settings":
+                        if self.awaiting_rebind and self.input_mode == "KEYBOARD":
+                            new_key = f"mouse_{event.button}"
+                            keybinds = self.player_state["controls"][self.input_mode]
+                            if new_key not in keybinds:
+                                keybinds[new_key] = keybinds.pop(self.awaiting_rebind)
+                                self.awaiting_rebind = None
+                        else:
+                            # Handle settings button clicks
+                            keybinds = self.player_state["controls"][self.input_mode]
+                            keybind_list = sorted(keybinds.items(), key=lambda item: (item[1]["action"], item[0]))
+                            
+                            if keybind_list:
+                                max_per_col = max(1, (sh - 2 * y_start) // (button_height + 10))
+                                num_cols = (len(keybind_list) + max_per_col - 1) // max_per_col
+                                total_width = num_cols * button_width + (num_cols - 1) * col_spacing
+                                x_start = (sw - total_width) // 2
+                                
+                                x, y, col = x_start, y_start, 0
+                                for idx, (key_name, bind) in enumerate(keybind_list):
+                                    btn_rect = pygame.Rect(x, y, button_width, button_height)
+                                    if btn_rect.collidepoint(mx, my):
+                                        self.awaiting_rebind = key_name
+                                        selected_index = idx
+                                        break
+                                    y += button_height + 10
+                                    if (idx + 1) % max_per_col == 0:
+                                        y = y_start
+                                        col += 1
+                                        x = x_start + col * (button_width + col_spacing)
+                    
+                    # Team tab composition button handling
+                    elif tabs[selected_tab] == "Team":
+                        self.handle_team_button_clicks(mx, my, sw, sh, y_start)
+
+                # Controller handling
+                elif event.type == pygame.JOYBUTTONDOWN:
+                    if event.button == 7:  # Back button
                         if self.awaiting_rebind:
                             self.awaiting_rebind = None
                         else:
                             paused = False
-                    if event.button == 0:  # A button (usually button 0)
-                        if keybind_list:
-                            self.awaiting_rebind = keybind_list[selected_index][0]
+                    elif event.button == 0 and not self.awaiting_rebind:  # A button
+                        if tabs[selected_tab] == "Settings":
+                            keybinds = self.player_state["controls"][self.input_mode]
+                            keybind_list = sorted(keybinds.items(), key=lambda item: (item[1]["action"], item[0]))
+                            if keybind_list and selected_index < len(keybind_list):
+                                self.awaiting_rebind = keybind_list[selected_index][0]
+                    elif event.button == 4 and not self.awaiting_rebind:  # Left shoulder
+                        selected_tab = (selected_tab - 1) % len(tabs)
+                        selected_index = 0
+                    elif event.button == 5 and not self.awaiting_rebind:  # Right shoulder
+                        selected_tab = (selected_tab + 1) % len(tabs)
+                        selected_index = 0
+
                 elif event.type == pygame.JOYHATMOTION and not self.awaiting_rebind:
                     if event.value == (0, 1):  # Up
-                        selected_index = (selected_index - 1) % len(keybind_list)
+                        if tabs[selected_tab] == "Settings":
+                            keybinds = self.player_state["controls"][self.input_mode]
+                            keybind_list = sorted(keybinds.items(), key=lambda item: (item[1]["action"], item[0]))
+                            if keybind_list:
+                                selected_index = (selected_index - 1) % len(keybind_list)
                     elif event.value == (0, -1):  # Down
-                        selected_index = (selected_index + 1) % len(keybind_list)
+                        if tabs[selected_tab] == "Settings":
+                            keybinds = self.player_state["controls"][self.input_mode]
+                            keybind_list = sorted(keybinds.items(), key=lambda item: (item[1]["action"], item[0]))
+                            if keybind_list:
+                                selected_index = (selected_index + 1) % len(keybind_list)
+                    elif event.value == (-1, 0):  # Left
+                        selected_tab = (selected_tab - 1) % len(tabs)
+                        selected_index = 0
+                    elif event.value == (1, 0):  # Right
+                        selected_tab = (selected_tab + 1) % len(tabs)
+                        selected_index = 0
+
+                # Controller rebinding
                 elif self.awaiting_rebind and self.input_mode == "CONTROLLER" and event.type in controller_event_map:
-                    # Handle controller rebinding using the mapping
                     new_key = controller_event_map[event.type](event)
+                    keybinds = self.player_state["controls"][self.input_mode]
                     if new_key not in keybinds:
                         keybinds[new_key] = keybinds.pop(self.awaiting_rebind)
                         self.awaiting_rebind = None
@@ -482,76 +561,222 @@ class Game:
             # --- Drawing ---
             scaled = pygame.transform.scale(self.display, self.screen.get_size())
             self.screen.blit(scaled, (0, 0))
-            
             overlay = pygame.Surface(self.screen.get_size(), pygame.SRCALPHA)
             overlay.fill((0, 0, 0, 180))
             self.screen.blit(overlay, (0, 0))
 
-            # Draw keybind buttons
-            x, y, col = x_start, y_start, 0
-            for idx, (key_name, bind) in enumerate(keybind_list):
-                action = bind["action"]
-                btn_rect = pygame.Rect(x, y, button_width, button_height)
-                
-                # Determine colors
-                if self.awaiting_rebind == key_name:
-                    color, text_color = (200, 100, 100), (255, 255, 255)
-                elif idx == selected_index:
-                    color, text_color = (100, 150, 100), (255, 255, 255)  # Green for selected
-                elif btn_rect.collidepoint(mx, my):
-                    color, text_color = (120, 120, 200), (255, 255, 0)
-                else:
-                    color, text_color = (60, 60, 60), (255, 255, 255)
-                
-                pygame.draw.rect(self.screen, color, btn_rect)
-                
-                # Format key name using mapping
-                display_key = key_name.capitalize()  # Default
-                for prefix, formatter in key_formatters.items():
-                    if key_name.startswith(prefix):
-                        display_key = formatter(key_name)
-                        break
-                
-                text = self.font.render(f"{action.capitalize()}: {display_key}", True, text_color)
-                self.screen.blit(text, (btn_rect.x + 5, btn_rect.y + 5))
-                
-                y += button_height + 10
-                if (idx + 1) % max_per_col == 0:
-                    y = y_start
-                    col += 1
-                    x = x_start + col * (button_width + col_spacing)
+            # Draw tabs
+            for i, tab in enumerate(tabs):
+                tab_rect = pygame.Rect(i * tab_width, 0, tab_width, button_height)
+                color = (120, 120, 200) if i == selected_tab else (60, 60, 60)
+                pygame.draw.rect(self.screen, color, tab_rect)
+                pygame.draw.rect(self.screen, (255, 255, 255), tab_rect, 2)
+                text = self.font.render(tab, True, (255, 255, 255))
+                text_rect = text.get_rect(center=tab_rect.center)
+                self.screen.blit(text, text_rect)
 
-            # Draw rebind prompt
-            if self.awaiting_rebind:
-                input_type = "button/axis/hat" if self.input_mode == "CONTROLLER" else "key or mouse button"
+            # Draw content based on selected tab
+            if tabs[selected_tab] == "Settings":
+                self.draw_settings_tab(sw, sh, y_start, button_width, button_height, col_spacing, selected_index, mx, my, key_formatters)
+                                    
+            elif tabs[selected_tab] == "Inventory":
+                self.draw_inventory_tab(sw, sh, y_start)
                 
-                # Format awaiting rebind key name
-                display_key = self.awaiting_rebind.capitalize()
-                for prefix, formatter in key_formatters.items():
-                    if self.awaiting_rebind.startswith(prefix):
-                        display_key = formatter(self.awaiting_rebind)
-                        break
-                
-                prompt = self.font.render(
-                    f"Press a {input_type} for '{display_key}'... (ESC to cancel)",
-                    True, (255, 255, 0)
-                )
-                self.screen.blit(prompt, (x_start, sh - 50))
-            else:
-                # Show navigation instructions
-                if self.input_mode == "CONTROLLER":
-                    instruction = "Use D-pad to navigate, A to select, ESC to exit"
-                else:
-                    instruction = "Use arrow keys to navigate, Enter to select, ESC to exit"
-                
-                instruction_text = self.font.render(instruction, True, (200, 200, 200))
-                self.screen.blit(instruction_text, (x_start, sh - 50))
+            elif tabs[selected_tab] == "Team":
+                self.draw_team_tab(sw, sh, y_start, mx, my)
 
             pygame.display.update()
             clock.tick(60)
-        
+
         self.awaiting_rebind = None
-        self.run()
+
+    def handle_team_button_clicks(self, mx, my, sw, sh, y_start):
+        """Handle clicks on composition buttons in the team tab"""
+        row_height = 60
+        button_width = 80
+        button_height = 30
+        button_spacing = 10
+        
+        for i, member in enumerate(self.team):
+            y_pos = y_start + 40 + i * row_height
+            
+            # Calculate button positions (aligned to the right side)
+            buttons_start_x = sw - (3 * button_width + 2 * button_spacing + 50)
+            
+            # Three buttons for each team member
+            button_rects = [
+                pygame.Rect(buttons_start_x, y_pos + 20, button_width, button_height),
+                pygame.Rect(buttons_start_x + button_width + button_spacing, y_pos + 20, button_width, button_height),
+                pygame.Rect(buttons_start_x + 2 * (button_width + button_spacing), y_pos + 20, button_width, button_height)
+            ]
+            
+            button_labels = ["Composition 1", "Composition 2", "Composition 3"]
+            
+            for j, rect in enumerate(button_rects):
+                if rect.collidepoint(mx, my):
+                    # Open composition editor for this member and composition type
+                    self.open_composition_editor(member, button_labels[j])
+                    return
+
+    def open_composition_editor(self, member_name, composition_type):
+        """Open the composition editor for a specific team member and composition type"""
+        # This is where you would implement opening your composition editor
+        # For now, just print what would be opened
+        print(f"Opening {composition_type} editor for {member_name}")
+        
+        # Example: You might call a method like:
+        # self.composition_editor.open(member_name, composition_type)
+        # or set a flag to switch to the composition editor state:
+        # self.game_state = "composition_editor"
+        # self.current_member = member_name
+        # self.current_composition_type = composition_type
+
+    def draw_settings_tab(self, sw, sh, y_start, button_width, button_height, col_spacing, 
+                        selected_index, mx, my, key_formatters):
+        """Draw the settings tab content"""
+        keybinds = self.player_state["controls"][self.input_mode]
+        keybind_list = sorted(keybinds.items(), key=lambda item: (item[1]["action"], item[0]))
+        
+        if not keybind_list:
+            text = self.font.render("No keybinds found", True, (255, 255, 255))
+            self.screen.blit(text, (50, y_start))
+            return
+        
+        max_per_col = max(1, (sh - 2 * y_start) // (button_height + 10))
+        num_cols = (len(keybind_list) + max_per_col - 1) // max_per_col
+        total_width = num_cols * button_width + (num_cols - 1) * col_spacing
+        x_start = (sw - total_width) // 2
+        
+        # Clamp selected index
+        selected_index = max(0, min(selected_index, len(keybind_list) - 1))
+        
+        # Draw keybind buttons
+        x, y, col = x_start, y_start, 0
+        for idx, (key_name, bind) in enumerate(keybind_list):
+            action = bind["action"]
+            btn_rect = pygame.Rect(x, y, button_width, button_height)
+            
+            # Determine colors
+            if self.awaiting_rebind == key_name:
+                color, text_color = (200, 100, 100), (255, 255, 255)
+            elif idx == selected_index:
+                color, text_color = (100, 150, 100), (255, 255, 255)
+            elif btn_rect.collidepoint(mx, my):
+                color, text_color = (120, 120, 200), (255, 255, 0)
+            else:
+                color, text_color = (60, 60, 60), (255, 255, 255)
+            
+            pygame.draw.rect(self.screen, color, btn_rect)
+            pygame.draw.rect(self.screen, (255, 255, 255), btn_rect, 2)
+            
+            # Format key name
+            display_key = key_name.capitalize()
+            for prefix, formatter in key_formatters.items():
+                if key_name.startswith(prefix):
+                    display_key = formatter(key_name)
+                    break
+            
+            # Draw text with proper fitting
+            text_str = f"{action.capitalize()}: {display_key}"
+            text = self.font.render(text_str, True, text_color)
+            
+            # Truncate text if too long
+            if text.get_width() > button_width - 10:
+                text_str = text_str[:20] + "..."
+                text = self.font.render(text_str, True, text_color)
+            
+            self.screen.blit(text, (btn_rect.x + 5, btn_rect.y + 10))
+            
+            y += button_height + 10
+            if (idx + 1) % max_per_col == 0:
+                y = y_start
+                col += 1
+                x = x_start + col * (button_width + col_spacing)
+        
+        # Draw instructions/prompts
+        if self.awaiting_rebind:
+            input_type = "button/axis/hat" if self.input_mode == "CONTROLLER" else "key or mouse button"
+            display_key = self.awaiting_rebind.capitalize()
+            for prefix, formatter in key_formatters.items():
+                if self.awaiting_rebind.startswith(prefix):
+                    display_key = formatter(self.awaiting_rebind)
+                    break
+            
+            prompt = self.font.render(
+                f"Press a {input_type} for '{display_key}'... (ESC to cancel)",
+                True, (255, 255, 0)
+            )
+            self.screen.blit(prompt, (x_start, sh - 80))
+        else:
+            if self.input_mode == "CONTROLLER":
+                instruction = "D-pad: navigate | A: select | LB/RB: switch tabs | Back: exit"
+            else:
+                instruction = "Arrows: navigate | Enter: select | Tab keys: switch tabs | ESC: exit"
+            
+            instruction_text = self.font.render(instruction, True, (200, 200, 200))
+            self.screen.blit(instruction_text, (x_start, sh - 50))
+
+    def draw_inventory_tab(self, sw, sh, y_start):
+        """Draw the inventory tab content"""
+        # Header
+        header = self.font.render("Inventory", True, (255, 255, 255))
+        self.screen.blit(header, (50, y_start))
+        
+        # Example content - replace with your actual inventory system
+        items = ["Potion", "Key", "Map", "Scroll"]
+        for i, item in enumerate(items):
+            item_text = self.font.render(f"• {item}", True, (200, 200, 200))
+            self.screen.blit(item_text, (70, y_start + 40 + i * 30))
+
+    def draw_team_tab(self, sw, sh, y_start, mx, my):
+        """Draw the team tab content with composition buttons"""
+        # Header
+        header = self.font.render("Team", True, (255, 255, 255))
+        self.screen.blit(header, (50, y_start))
+
+        row_height = 60
+        button_width = 80
+        button_height = 30
+        button_spacing = 10
+
+        for i, member in enumerate(self.team):
+            y_pos = y_start + 40 + i * row_height
+            
+            # Draw team member name
+            member_text = self.font.render(f"• {member}", True, (200, 200, 200))
+            self.screen.blit(member_text, (70, y_pos))
+            
+            # Calculate button positions (aligned to the right side)
+            buttons_start_x = sw - (3 * button_width + 2 * button_spacing + 50)
+            
+            # Three composition buttons for each team member
+            button_rects = [
+                pygame.Rect(buttons_start_x, y_pos + 20, button_width, button_height),
+                pygame.Rect(buttons_start_x + button_width + button_spacing, y_pos + 20, button_width, button_height),
+                pygame.Rect(buttons_start_x + 2 * (button_width + button_spacing), y_pos + 20, button_width, button_height)
+            ]
+            
+            button_labels = ["Composition 1", "Composition 2", "Composition 3"]
+            button_colors = [(100, 150, 100), (100, 100, 150), (150, 100, 100)]
+            
+            for j, (rect, label, base_color) in enumerate(zip(button_rects, button_labels, button_colors)):
+                # Determine button color based on hover state
+                if rect.collidepoint(mx, my):
+                    color = tuple(min(255, c + 40) for c in base_color)  # Brighten on hover
+                else:
+                    color = base_color
+                
+                # Draw button
+                pygame.draw.rect(self.screen, color, rect)
+                pygame.draw.rect(self.screen, (255, 255, 255), rect, 2)
+                
+                # Draw button text
+                button_text = self.font.render(label, True, (255, 255, 255))
+                text_rect = button_text.get_rect(center=rect.center)
+                self.screen.blit(button_text, text_rect)
 
 
+    def addComposer(self):
+        pass
+    
 Game().run()
