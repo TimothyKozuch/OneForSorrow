@@ -1,9 +1,12 @@
 {
-    "playerLevel": 0,
+"playerLevel": 0,
     "inventory": {},
     "equipped": {},
     "Melody_Song_flags": {},
+    "Melody_Team": ["Lyla", "Corwin"],
     "Lyla_Silence_flags": {},
+    "Lyla_Team": ["Melody", "Corwin"],
+    
     "controls": {
         "KEYBOARD": {
             "a":{"action": "moveHorizontal","value":-1},

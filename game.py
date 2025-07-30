@@ -105,7 +105,6 @@ class Game:
         self.timeSignaturesUnlocked = []
         self.notesUnlocked = []
         self.compositions = {}
-        self.team = ["Lyla", "Melody", "Corwin"]
 
         self.tilemap = Tilemap(self, tile_size=16)
         
@@ -113,6 +112,19 @@ class Game:
         self.load_level(self.level)
         
         self.screenshake = 0
+
+    @property
+    def team(self):
+        return {
+            'Melody_Team': self.player_state.get('Melody_Team', []),
+            'Lyla_Team': self.player_state.get('Lyla_Team', [])
+        }
+    @property
+    def player_flags(self):
+        return {
+            'Melody_Song_flags':self.player_state['Melody_Song_flags'],'Lyla_Silence_flags':self.player_state['Lyla_Silence_flags']
+        } 
+
         
     def load_level(self, map_id):
         pygame.mixer.music.load('data/music.wav')
@@ -138,7 +150,7 @@ class Game:
         self.player_state = json.load(f)
         f.close()
 
-        self.player_flags ={'Melody_Song_flags':self.player_state['Melody_Song_flags'],'Lyla_Silence_flags':self.player_state['Lyla_Silence_flags']} 
+        
 
         # self.compositions["Lyla"] = [Composition(self.assets,self.measuresUnlocked,self.clefsUnlocked,self.keysignaturesUnlocked,self.timeSignaturesUnlocked,self.notesUnlocked)]
 
@@ -592,33 +604,40 @@ class Game:
         self.awaiting_rebind = None
 
     def handle_team_button_clicks(self, mx, my, sw, sh, y_start):
-        """Handle clicks on composition buttons in the team tab"""
+        """Handle clicks on up/down and compose buttons for Melody_Team and Lyla_Team"""
         row_height = 60
-        button_width = 80
+        button_width = 100
         button_height = 30
         button_spacing = 10
-        
-        for i, member in enumerate(self.team):
-            y_pos = y_start + 40 + i * row_height
-            
-            # Calculate button positions (aligned to the right side)
-            buttons_start_x = sw - (3 * button_width + 2 * button_spacing + 50)
-            
-            # Three buttons for each team member
-            button_rects = [
-                pygame.Rect(buttons_start_x, y_pos + 20, button_width, button_height),
-                pygame.Rect(buttons_start_x + button_width + button_spacing, y_pos + 20, button_width, button_height),
-                pygame.Rect(buttons_start_x + 2 * (button_width + button_spacing), y_pos + 20, button_width, button_height)
-            ]
-            
-            button_labels = ["Composition 1", "Composition 2", "Composition 3"]
-            
-            for j, rect in enumerate(button_rects):
-                if rect.collidepoint(mx, my):
-                    # Open composition editor for this member and composition type
-                    self.open_composition_editor(member, button_labels[j])
+        compose_button_width = 80
+
+        y_offset = y_start + 40
+        for team_key in ["Melody_Team", "Lyla_Team"]:
+            team_list = self.player_state.get(team_key, [])
+            y_offset += 30  # For team label
+            for i, member in enumerate(team_list):
+                y_pos = y_offset + i * row_height
+                up_rect = pygame.Rect(sw - 2 * button_width - button_spacing - 50, y_pos, button_width, button_height)
+                down_rect = pygame.Rect(sw - button_width - 50, y_pos, button_width, button_height)
+
+                if up_rect.collidepoint(mx, my) and i > 0:
+                    team_list[i], team_list[i-1] = team_list[i-1], team_list[i]
+                    self.player_state[team_key] = team_list
+                    return
+                if down_rect.collidepoint(mx, my) and i < len(team_list) - 1:
+                    team_list[i], team_list[i+1] = team_list[i+1], team_list[i]
+                    self.player_state[team_key] = team_list
                     return
 
+                # Compose button clicks
+                for c in range(3):
+                    compose_rect = pygame.Rect(250 + c * (compose_button_width + 10), y_pos, compose_button_width, button_height)
+                    if compose_rect.collidepoint(mx, my):
+                        self.open_composition_editor(member, f"Compose {c+1}")
+                        return
+
+            y_offset += len(team_list) * row_height + 20
+        
     def open_composition_editor(self, member_name, composition_type):
         """Open the composition editor for a specific team member and composition type"""
         # This is where you would implement opening your composition editor
@@ -730,51 +749,61 @@ class Game:
             self.screen.blit(item_text, (70, y_start + 40 + i * 30))
 
     def draw_team_tab(self, sw, sh, y_start, mx, my):
-        """Draw the team tab content with composition buttons"""
-        # Header
+        """Draw the team tab content with rearrange and compose buttons for Melody_Team and Lyla_Team"""
         header = self.font.render("Team", True, (255, 255, 255))
         self.screen.blit(header, (50, y_start))
 
+        teams = [
+            ("Melody's Team", self.player_state.get("Melody_Team", [])),
+            ("Lyla's Team", self.player_state.get("Lyla_Team", []))
+        ]
         row_height = 60
-        button_width = 80
+        button_width = 100
         button_height = 30
         button_spacing = 10
+        compose_button_width = 80
 
-        for i, member in enumerate(self.team):
-            y_pos = y_start + 40 + i * row_height
-            
-            # Draw team member name
-            member_text = self.font.render(f"• {member}", True, (200, 200, 200))
-            self.screen.blit(member_text, (70, y_pos))
-            
-            # Calculate button positions (aligned to the right side)
-            buttons_start_x = sw - (3 * button_width + 2 * button_spacing + 50)
-            
-            # Three composition buttons for each team member
-            button_rects = [
-                pygame.Rect(buttons_start_x, y_pos + 20, button_width, button_height),
-                pygame.Rect(buttons_start_x + button_width + button_spacing, y_pos + 20, button_width, button_height),
-                pygame.Rect(buttons_start_x + 2 * (button_width + button_spacing), y_pos + 20, button_width, button_height)
-            ]
-            
-            button_labels = ["Composition 1", "Composition 2", "Composition 3"]
-            button_colors = [(100, 150, 100), (100, 100, 150), (150, 100, 100)]
-            
-            for j, (rect, label, base_color) in enumerate(zip(button_rects, button_labels, button_colors)):
-                # Determine button color based on hover state
-                if rect.collidepoint(mx, my):
-                    color = tuple(min(255, c + 40) for c in base_color)  # Brighten on hover
-                else:
-                    color = base_color
-                
-                # Draw button
-                pygame.draw.rect(self.screen, color, rect)
-                pygame.draw.rect(self.screen, (255, 255, 255), rect, 2)
-                
-                # Draw button text
-                button_text = self.font.render(label, True, (255, 255, 255))
-                text_rect = button_text.get_rect(center=rect.center)
-                self.screen.blit(button_text, text_rect)
+        y_offset = y_start + 40
+        for team_label, team_list in teams:
+            # Draw team label
+            label_text = self.font.render(team_label, True, (180, 220, 255))
+            self.screen.blit(label_text, (70, y_offset))
+            y_offset += 30
+
+            for i, member in enumerate(team_list):
+                y_pos = y_offset + i * row_height
+
+                # Draw member name
+                member_text = self.font.render(f"• {member}", True, (200, 200, 200))
+                self.screen.blit(member_text, (100, y_pos))
+
+                # Draw up/down buttons
+                up_rect = pygame.Rect(sw - 2 * button_width - button_spacing - 50, y_pos, button_width, button_height)
+                down_rect = pygame.Rect(sw - button_width - 50, y_pos, button_width, button_height)
+
+                up_color = (120, 180, 120) if up_rect.collidepoint(mx, my) else (80, 120, 80)
+                down_color = (180, 120, 120) if down_rect.collidepoint(mx, my) else (120, 80, 80)
+
+                pygame.draw.rect(self.screen, up_color, up_rect)
+                pygame.draw.rect(self.screen, (255, 255, 255), up_rect, 2)
+                pygame.draw.rect(self.screen, down_color, down_rect)
+                pygame.draw.rect(self.screen, (255, 255, 255), down_rect, 2)
+
+                up_text = self.font.render("Up", True, (255, 255, 255))
+                down_text = self.font.render("Down", True, (255, 255, 255))
+                self.screen.blit(up_text, up_rect.move(20, 5))
+                self.screen.blit(down_text, down_rect.move(10, 5))
+
+                # Draw Compose buttons
+                for c in range(3):
+                    compose_rect = pygame.Rect(250 + c * (compose_button_width + 10), y_pos, compose_button_width, button_height)
+                    compose_color = (120, 120, 200) if compose_rect.collidepoint(mx, my) else (60, 60, 120)
+                    pygame.draw.rect(self.screen, compose_color, compose_rect)
+                    pygame.draw.rect(self.screen, (255, 255, 255), compose_rect, 2)
+                    compose_text = self.font.render(f"Compose {c+1}", True, (255, 255, 255))
+                    self.screen.blit(compose_text, compose_rect.move(5, 5))
+
+            y_offset += len(team_list) * row_height + 20
 
 
     def addComposer(self):
