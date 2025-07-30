@@ -69,6 +69,7 @@ class Game:
             'particle/leaf': Animation(load_images('particles/leaf'), img_dur=20, loop=False),
             'particle/particle': Animation(load_images('particles/particle'), img_dur=6, loop=False),
             'gun': load_image('gun.png'),
+            'projectile': load_image('projectile.png'),
 
             'music/clefs': Animation(load_images('music/clefs'), img_dur=20,loop=False),
             'music/key_signatures/flats': Animation(load_images('music/key_signatures/flats'), img_dur=10,loop=False),
