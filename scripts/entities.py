@@ -92,31 +92,14 @@ class Friend(PhysicsEntity):
     def apply_flag_changes(self, choice_data):
         #"""Apply flag changes from a dialogue choice to the player's flags"""
         
-        # Handle Melody_Song_flags_changes
-        if "Melody_Song_flags_changes" in choice_data:
-            # Load current player data (you might want to load this from a file)
-            # For now, we'll assume the game has access to player flags
-            if not hasattr(self.game, 'player_flags'):
-                self.game.player_flags = {
-                    "Melody_Song_flags": {},
-                    "Lyla_Silence_flags": {}
-                }
-            
-            for flag in choice_data["Melody_Song_flags_changes"]:
-                self.game.player_flags["Melody_Song_flags"][flag] = True
-                print(f"Added flag: {flag} to Melody_Song_flags")
-        
-        # Handle Lyla_Silence_flags_changes
-        if "Lyla_Silence_flags_changes" in choice_data:
-            if not hasattr(self.game, 'player_flags'):
-                self.game.player_flags = {
-                    "Melody_Song_flags": {},
-                    "Lyla_Silence_flags": {}
-                }
-            
-            for flag in choice_data["Lyla_Silence_flags_changes"]:
-                self.game.player_flags["Lyla_Silence_flags"][flag] = True
-                print(f"Added flag: {flag} to Lyla_Silence_flags")
+        if "flags_changes" in choice_data:
+            for flag_type, flags in choice_data["flags_changes"].items():
+                if flag_type not in self.game.player_flags:
+                    self.game.player_flags[flag_type] = {}
+                
+                for flag in flags:
+                    self.game.player_flags[flag_type][flag] = True
+                    print(f"Added flag: {flag} to {flag_type}")
 
     def talk(self,num):
 
@@ -137,13 +120,8 @@ class Friend(PhysicsEntity):
                 self.game.endLevel()
 
         # Also apply any flag changes from the current dialogue node itself
-        if "Melody_Song_flags_changes" in self.current_dialogue:
-            choice_data = {"Melody_Song_flags_changes": self.current_dialogue["Melody_Song_flags_changes"]}
-            self.apply_flag_changes(choice_data)
-        
-        if "Lyla_Silence_flags_changes" in self.current_dialogue:
-            choice_data = {"Lyla_Silence_flags_changes": self.current_dialogue["Lyla_Silence_flags_changes"]}
-            self.apply_flag_changes(choice_data)
+        if "flags_changes" in self.current_dialogue:
+            self.apply_flag_changes(self.current_dialogue)
 
         if "end of level" in self.current_dialogue:
             self.game.endLevel()

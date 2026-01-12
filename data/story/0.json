@@ -71,13 +71,17 @@
             "id": "choice_1",
             "text": "Terrifying (scared of the dark, honest)",
             "nextNode": "Peaceful",
-            "Melody_Song_flags_changes": ["scared of the dark", "honest"]
+            "flags_changes": {
+              "Melody_Song_flags": ["scared of the dark", "honest"]
+            }
           },
           {
             "id": "choice_2",
             "text": "Nothing to be afraid of (brave face, liar)",
             "nextNode": "Peaceful",
-            "Melody_Song_flags_changes": ["brave face", "liar"]
+            "flags_changes": {
+              "Melody_Song_flags": ["brave face", "liar"]
+            }
           }
         ]
       },
@@ -88,7 +92,9 @@
         "text": "Peaceful...",
         "audioFile": "lyla_peaceful_01.wav",
         "animation": "None",
-        "Lyla_Silence_flags_changes": ["dark knight"],
+        "flags_changes": {
+          "Lyla_Silence_flags": ["dark knight"]
+        },
         "choices": [
           {
             "id": "choice_3",
@@ -124,7 +130,7 @@
         "text": "I'm never scared with you around",
         "audioFile": "never_scared_01.wav",
         "animation": "None",
-        "end of level":"True",
+        "end of level": "True",
         "choices": []
       }
     },

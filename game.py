@@ -106,7 +106,7 @@ class Game:
         self.player_state = json.load(f)
         f.close()
 
-        self.player_flags ={'Melody_Song_flags':self.player_state['Melody_Song_flags'],'Lyla_Silence_flags':self.player_state['Lyla_Silence_flags']} 
+        self.player_flags = self.player_state['flags'] 
 
         #replaces each of the spawners with its character
         for spawner in self.tilemap.extract([('spawners', i) for i in range(len(os.listdir('data/images/tiles/spawners')))]):
