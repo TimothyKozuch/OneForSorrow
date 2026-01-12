@@ -18,7 +18,10 @@ class PhysicsEntity:
         self.action = ''
         self.anim_offset = (-3, -3)
         self.flip = False
-        self.set_action('idle')
+        if self.type == 'player':
+            self.set_action('lyla_idle')
+        else:
+            self.set_action('idle')
         
         self.last_movement = [0, 0]
     
@@ -105,9 +108,9 @@ class Friend(PhysicsEntity):
 
         if self.dialogue_ID == 'None':
             self.dialogue_ID = 'start'
-        elif (num <= len(self.current_dialogue['choices']) and (num>=1)):
+        elif (isinstance(self.current_dialogue.get('choices'), list) and 0 <= num < len(self.current_dialogue['choices'])):
             # Get the chosen option
-            chosen_choice = self.current_dialogue['choices'][num - 1]
+            chosen_choice = self.current_dialogue['choices'][num]
             
             # Apply any flag changes from this choice
             self.apply_flag_changes(chosen_choice)
@@ -206,14 +209,17 @@ class Enemy(PhysicsEntity):
 class Player(PhysicsEntity):
     def __init__(self, game, pos, size, screen_size):
         super().__init__(game, 'player', pos, size)
+        self.set_action('lyla_idle')
         self.air_time = 0
         self.max_jumps = 2
         self.wall_slide = False
         self.dashing = 0
         self.jumps = self.max_jumps
-        self.gliding=False
+
         self.screen_size = screen_size
         self.interacting = False
+        self.selecting = 0
+        self.casting = False
     
     def update(self, tilemap, movement=(0, 0)):
         super().update(tilemap, movement=movement)
@@ -229,67 +235,24 @@ class Player(PhysicsEntity):
         if self.collisions['down']:
             self.air_time = 0
             self.jumps = self.max_jumps
-            self.gliding=False
             
         self.wall_slide = False
         if (self.collisions['right'] or self.collisions['left']) and self.air_time > 4:
             self.wall_slide = True
-            self.gliding=False
             self.velocity[1] = min(self.velocity[1], 0.5)
             if self.collisions['right']:
                 self.flip = False
             else:
                 self.flip = True
-            self.set_action('wall_slide')
-
-
-        if self.gliding:
-            mouse_x, mouse_y = pygame.mouse.get_pos()[0] *(320/self.screen_size[0]) , pygame.mouse.get_pos()[1] *(240/self.screen_size[1])
-            # Calculate angle from glider to mouse (this is also the glider's rotation)
-            #pixelpos = self.pos[0]-offset,self.pos[1]-offset
-            angle = math.atan2(mouse_y - self.pos[1], mouse_x - self.pos[0])
-            # Calculate the gliding speed based on the angle
-            # When angle is closer to horizontal (0 or π), more horizontal speed
-            # When angle is more vertical, more vertical (falling) speed
-            
-            # Get the absolute horizontal component (how horizontal the glider is)
-            horizontal_factor = abs(math.cos(angle))
-            
-            # Get the vertical component (how downward the glider is)
-            vertical_factor = math.sin(angle)
-            
-            # Set base gliding speed
-            glide_speed = 5.0
-            
-            # More horizontal means faster overall and less falling
-            self.velocity[0] = math.cos(angle) * glide_speed #* (0.8 + horizontal_factor * 0.4)
-            
-            # More vertical means faster falling
-            # Limit minimum fall speed to ensure the glider always descends
-            fall_speed = glide_speed * (0.2 + (1 - horizontal_factor) * 0.6)
-            # Make sure fall direction is always downward
-            if vertical_factor < 0:
-                fall_speed *= 0.5  # Less upward movement when pointed up
-            
-            self.velocity[1] = vertical_factor * fall_speed
-            
-            # Add minimum falling speed to ensure gravity effect
-            if self.velocity[1] < 0.5:
-                self.velocity[1] += 0.5
-            
-            
-
-
+            self.set_action('lyla_wall_slide')
 
         if not self.wall_slide:
-            if self.gliding:
-                 self.set_action('gliding')
-            elif self.air_time > 4:
-                self.set_action('jump')
+            if self.air_time > 4:
+                self.set_action('lyla_jump')
             elif movement[0] != 0:
-                self.set_action('run')
+                self.set_action('lyla_run')
             else:
-                self.set_action('idle')
+                self.set_action('lyla_idle')
         
         if abs(self.dashing) in {60, 50}:
             for i in range(20):
@@ -297,6 +260,7 @@ class Player(PhysicsEntity):
                 speed = random.random() * 0.5 + 0.5
                 pvelocity = [math.cos(angle) * speed, math.sin(angle) * speed]
                 self.game.particles.append(Particle(self.game, 'particle', self.rect().center, velocity=pvelocity, frame=random.randint(0, 7)))
+
 
         if self.dashing > 0:
             self.dashing = max(0, self.dashing - 1)
@@ -315,45 +279,162 @@ class Player(PhysicsEntity):
             self.velocity[0] = min(self.velocity[0] + 0.1, 0)
     
     def render(self, surf, offset=(0, 0)):
-        if self.action == 'gliding' or self.action == 'run' or self.action == 'jump' or self.action == 'idle' or self.action == 'wall_slide':
+        if self.action == 'lyla_run' or self.action == 'lyla_jump' or self.action == 'lyla_idle' or self.action == 'lyla_wall_slide':
             surf.blit(pygame.transform.flip(self.animation.img(), not self.flip, False), (self.pos[0] - offset[0] + self.anim_offset[0], self.pos[1] - offset[1] + self.anim_offset[1]))
         elif abs(self.dashing) <= 50:
             super().render(surf, offset=offset)
-        
 
-    def jump(self):
-        if self.wall_slide:
-            if self.flip and self.last_movement[0] < 0:
-                self.velocity[0] = 3.5
-                self.velocity[1] = -2.5
-                self.air_time = 0
-                #self.jumps = max(0, self.jumps - 1)
-                return True
-            elif not self.flip and self.last_movement[0] > 0:
-                self.velocity[0] = -3.5
-                self.velocity[1] = -2.5
-                self.air_time = 0
-                #self.jumps = max(0, self.jumps - 1)
-                return True
-                
-        elif self.jumps:
-            self.velocity[1] = -3
-            self.jumps -= 1
-            self.air_time = 0
-            return True
-    
-    def dash(self):
-        if not self.dashing:
-            self.game.sfx['dash'].play()
-            if self.flip:
-                self.dashing = -60
+
+        if self.casting:
+            #staf
+            num=9
+            staf_offset=0
+            while num>0:
+                surf.blit(self.game.assets["music/staf"], (self.pos[0] - offset[0] + self.anim_offset[0]+staf_offset, self.pos[1] - offset[1] + self.anim_offset[1]-25))
+                staf_offset+=5
+                num-=1
+
+            clef_anim = self.game.assets['music/clefs']
+            clef_anim.update()
+            clef_img = clef_anim.img()  # Get current frame as a surface
+            surf.blit(clef_img, (self.pos[0] - offset[0] + self.anim_offset[0], self.pos[1] - offset[1] + self.anim_offset[1]-25))
+
+            keySig_anim = self.game.assets['music/key_signatures/'+"sharps"]
+            keySig_anim.update()
+            keySig_img = keySig_anim.img()  # Get current frame as a surface
+            surf.blit(keySig_img, (self.pos[0] - offset[0] + self.anim_offset[0], self.pos[1] - offset[1] + self.anim_offset[1]-25))
+
+            timeSig_anim = self.game.assets['music/time_signature']
+            timeSig_anim.update()
+            timeSig_img = timeSig_anim.img()  # Get current frame as a surface
+            surf.blit(timeSig_img, (self.pos[0] - offset[0] + self.anim_offset[0], self.pos[1] - offset[1] + self.anim_offset[1]-25))
+
+            stem_up_anim = self.game.assets['music/notes/stem_up']
+            stem_up_anim.update()
+            stem_up_img = stem_up_anim.img()  # Get current frame as a surface
+            surf.blit(stem_up_img, (self.pos[0] - offset[0] + self.anim_offset[0]+40, self.pos[1] - offset[1] + self.anim_offset[1]-25+11))
+            
+            
+    def closestFriend(self, surf, offset=(0, 0), max_distance=25):
+        closest = None
+        closest_dist = float('inf')
+        player_rect = self.rect()
+        for friend in self.game.friends:
+            dist = math.hypot(
+                player_rect.centerx - friend.rect().centerx,
+                player_rect.centery - friend.rect().centery
+            )
+            if dist < closest_dist and dist <= max_distance:
+                closest = friend
+                closest_dist = dist
+        if closest:
+            icon_anim = self.game.assets['friend/closest_friend']
+            if hasattr(icon_anim, 'update'):
+                icon_anim.update()
+                icon = icon_anim.img()
             else:
-                self.dashing = 60
+                icon = icon_anim
+            friend_rect = closest.rect()
+            icon_x = friend_rect.centerx - offset[0] - icon.get_width() // 2
+            icon_y = friend_rect.top - offset[1] - icon.get_height()+10  # 4px above head
+            surf.blit(icon, (icon_x, icon_y))
+        return closest
 
-    def start_glide(self):
-        self.gliding=True
-        return
+
+    def jump(self,value,sensitivity = 0.2):
+        if value <=1:
+            if self.wall_slide:
+
+                if self.flip and self.last_movement[0] < 0:
+                    self.velocity[0] = 3.5
+                elif not self.flip and self.last_movement[0] > 0:
+                    self.velocity[0] = -3.5
+
+                self.air_time = 0
+                #self.jumps = max(0, self.jumps - 1)
+                self.velocity[1] = -2.5
+                self.game.sfx['jump'].play()
+
+                return True
+                    
+            elif self.jumps:
+                self.velocity[1] = -3
+                self.jumps -= 1
+                self.air_time = 0
+                self.game.sfx['jump'].play()
+                return True
+        return False
+    
+    def dash(self,value,sensitivity = 0.2):
+        if value<=1:
+            if not self.dashing:
+                self.game.sfx['dash'].play()
+                if self.flip:
+                    self.dashing = -60
+                else:
+                    self.dashing = 60
+
+    def startCasting(self,value,sensitivity = 0.2):
+        was_casting = self.casting
+        if value<=1:
+            self.casting = value > sensitivity
+        else:
+            self.casting=False
+        if self.casting and not was_casting:
+            self.restartCasting()
+            
+    
+    def restartCasting(self):
+        self.game.assets['music/clefs'].frame = 0
+        self.game.assets['music/key_signatures/flats'].frame = 0
+        self.game.assets['music/key_signatures/sharps'].frame = 0
+        self.game.assets['music/time_signature'].frame = 0
+        self.game.assets['music/notes/stem_up'].frame = 0
         
-    def end_glide(self):
-        self.gliding=False
-        return
+        
+    
+
+    def moveHorizontal(self,value,sensitivity = 0.2):
+        if (-1<=value<=1):
+            self.game.movement[0] = value < -sensitivity
+            self.game.movement[1] = value > sensitivity
+        elif value ==-2:
+            self.game.movement[0]=False
+        elif value==2:
+            self.game.movement[1]=False
+
+
+    def moveVirtical(self,value,sensitivity = 0.2):#up=down down=up
+        if (-2<value<2):
+            if value>sensitivity:
+                print("crouch")
+            else:
+                print("uncrouch")
+            if value<-sensitivity:
+                self.jump(value)
+        else:
+            print("uncrouch")
+
+    def scroll(self, value, sensitivity=0.2):
+        friend = self.game.closestFriend
+        if friend:
+            if "choices" in friend.current_dialogue and len(friend.current_dialogue["choices"]) > 0:
+                if (-1<=value<=1):
+                    self.selecting = (self.selecting + value) % len(friend.current_dialogue["choices"])
+                    print(self.selecting)
+    
+    def interact(self, value, sensitivity=0.2):
+        if value<0:
+            pass
+        elif value==0:
+            value= self.selecting
+        else:
+            value= value-1 #using number keys
+        friend = self.game.closestFriend
+        if friend:
+            self.game.current_dialogue = friend.talk(value)
+            self.selecting=0
+
+    def pause(self,value,sensitivity = 0.2):
+        if value<=1:
+            self.game.running = not self.game.running
